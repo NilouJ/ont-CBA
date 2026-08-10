@@ -70,3 +70,140 @@ Now review these five YAML files for internal consistency only. Check:
 Do not redesign. Return only problems and exact fixes.
 
 
+
+
+
+
+
+
+
+
+Yes, this is actually **good progress**, but treat it as **draft output that still needs local verification**, not truth yet.
+
+What it says is basically:
+
+```text
+The five YAML files were revised to match your preferred classification:
+Human / Human
+NonHuman / ServiceAccount
+NonHuman / Batch
+Unknown / Unknown
+```
+
+That is the right simplified taxonomy for your 2-week slice.
+
+But now your move is **not more prompting**. Your move is to **copy the five YAML files into your repo and run real validation locally**.
+
+| Step | What you do now                                                    | Exact purpose                                                                            |
+| ---: | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+|    1 | Copy the revised files into `model_linkml/`                        | Stop cycling in chat; create real files                                                  |
+|    2 | Run `linkml validate` on one valid and one invalid Account example | Prove the LinkML schema actually works                                                   |
+|    3 | Run a small consistency script across the YAML files               | Prove edge classes, enum values, classification results, and validation categories align |
+|    4 | Freeze these YAMLs as v1.1.0                                       | Use them as the model/rule contract                                                      |
+|    5 | Move to repo adapter/enrichment script                             | Start implementing the actual CommDataIQ extension                                       |
+
+Use this structure:
+
+```bash
+mkdir -p model_linkml/schema
+mkdir -p model_linkml/policy
+mkdir -p model_linkml/examples
+mkdir -p model_linkml/generated/docs
+mkdir -p model_linkml/generated/datamodel
+mkdir -p model_linkml/generated/jsonschema
+```
+
+Put files here:
+
+```text
+model_linkml/schema/account_graph.yaml
+model_linkml/policy/edge_policy.yaml
+model_linkml/policy/classification_rules.yaml
+model_linkml/policy/business_validation_rules.yaml
+model_linkml/policy/source_policy.yaml
+```
+
+Then install/run LinkML:
+
+```bash
+python -m pip install linkml linkml-runtime
+
+linkml validate \
+  --schema model_linkml/schema/account_graph.yaml \
+  --target-class Account \
+  model_linkml/examples/account.valid.yaml
+
+linkml generate doc model_linkml/schema/account_graph.yaml \
+  --output-directory model_linkml/generated/docs
+
+linkml generate python model_linkml/schema/account_graph.yaml \
+  > model_linkml/generated/datamodel/account_graph.py
+
+linkml generate json-schema model_linkml/schema/account_graph.yaml \
+  > model_linkml/generated/jsonschema/account_graph.schema.json
+```
+
+Now create the two tiny examples:
+
+```bash
+cat > model_linkml/examples/account.valid.yaml <<'YAML'
+node_id: account:td:SVC_ACCOUNT.BURBS157
+label: Account
+account_name: SVC_ACCOUNT.BURBS157
+account_class: NonHuman
+account_subtype: ServiceAccount
+origin_platform: td
+resolution_status: resolved
+YAML
+```
+
+```bash
+cat > model_linkml/examples/account.invalid.yaml <<'YAML'
+node_id: account:td:SVC_ACCOUNT.BURBS157
+label: ServiceAccount
+account_name: SVC_ACCOUNT.BURBS157
+account_class: Technical
+account_subtype: ISA_TD
+origin_platform: Teradata
+resolution_status: done
+YAML
+```
+
+The valid one should pass. The invalid one should fail.
+
+Important: do **not** ask GPT to keep revising forever. Ask it only one more thing after you copy the YAMLs:
+
+```text
+Write a Python consistency checker for these five YAML files. It should check:
+1. every edge source/target class in edge_policy.yaml exists in account_graph.yaml
+2. every classification result account_class exists in AccountClassEnum
+3. every classification result account_subtype exists in AccountSubtypeEnum
+4. every validation rule category is one of the allowed five categories
+5. every materialised edge policy requires source_record_id, evidence_id, assertion_status, and evidence_class
+Do not redesign the YAMLs. Only write the checker.
+```
+
+Then the actual implementation starts:
+
+```text
+existing entities.parquet / edges.parquet
+        ↓
+read service_account nodes
+        ↓
+apply classification_rules.yaml
+        ↓
+join owner / BU / CI / app lookup
+        ↓
+create enriched nodes and edges
+        ↓
+run validation/provenance checks
+        ↓
+write enriched entities.parquet / edges.parquet
+        ↓
+./cdiq.py graph-explorer build
+```
+
+So: **yes, accept this direction. Now stop modelling and verify the YAML files locally.**
+
+
+
