@@ -1,0 +1,259 @@
+ Claude generated something **useful**, but it is currently a **mixed registry**, not a clean LinkML-ready model.
+
+The problem is that it mixes **ontology**, **edge schema**, **source-pipeline decisions**, **validation rules**, **classification rules**, and **materialisation policy** in the same conceptual layer. For implementation, you must split them.
+
+in files                                                                                                                                                                              | What is wrong / risky                                                                                                                     | How it should be                                                                                            | Why                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `ontology_registry_federated` contains classes like `HumanAccount`, `ServiceAccount`, `BatchAccount`, `AADIdentity`, `DirectoryPerson`, `BU`, `Table`, `Database`, `CMDBRecord`, `ApplicationService` | This is useful, but it mixes **canonical ontology** with `M1/M2 pipeline`, `materialize`, `abstract/active`, and source-specific ID rules | Keep this as the basis for **LinkML classes**, but remove pipeline-specific logic from the class definition | LinkML schema should define the canonical model, not whether M1 or M2 produced the node            |
+| Classes like `HumanUser`, `HumanUserOM`, `BatchAccountOM`, `ServiceAccount`, `SystemUserAccount`, `InteractiveServiceAccount`                                                                         | Too many platform-specific subtypes may explode the model                                                                                 | Use one canonical `Account` class with properties: `account_class`, `account_subtype`, `origin_platform`    | Easier validation, fewer duplicated node labels, cleaner graph queries                             |
+| Edge file has `edge_label`, `source_vertex`, `target_vertex`, `semantic_layer`, `pipeline`, `materialize_policy`, `assertion_status`, `evidence_class`, `cardinality`                                 | This is actually very good, but not all of it belongs in LinkML classes                                                                   | Split into: **edge schema** in LinkML + **edge policy** in a separate YAML/table                            | LinkML should define allowed edge types; policy decides if/when to materialise them                |
+| `classification_rules_federated` has precedence rules like `FED-P1`, `TD-002`, `OM-002`, `NHI-001`                                                                                                    | Good logic, but this is not LinkML schema                                                                                                 | Keep this as `classification_rules.yaml` used by ETL before LinkML validation                               | LinkML validates final values; your rules decide how to classify messy accounts                    |
+| `validation_rules_federated` has `VAL-001` to `VAL-028`                                                                                                                                               | Very useful, but many are **business/data-quality validators**, not LinkML schema rules                                                   | Split into `linkml validation` vs `custom business validation`                                              | LinkML can check allowed fields/enums/required values; your Python validator checks business rules |
+| Rules like `VAL-019 Every accepted edge has source_record_id and evidence_id`                                                                                                                         | This is excellent and should be mandatory                                                                                                 | Add `source_record_id` and `evidence_id` as required slots on every materialised edge                       | Prevents unsourced graph assertions                                                                |
+| Rules like `VAL-023 old NHI-Data.csv superseded` and `VAL-024 batch coverage requires GDW1 + GDW2`                                                                                                    | These are source freshness/pipeline rules, not ontology                                                                                   | Put in `source_policy.yaml` or `business_validation_rules.yaml`                                             | LinkML should not know which file is newer; pipeline validator should                              |
+| `materialize_policy` says `yes`, `optional`, `conditional`, `no`                                                                                                                                      | Good concept, but not a class property                                                                                                    | Keep as edge materialisation policy outside LinkML                                                          | Some relationships are logical/derivable; not every relationship should become an edge             |
+| `assertion_status`: `accepted`, `derived`, `conditional`, `pending`                                                                                                                                   | Good evidence/control concept                                                                                                             | Keep this as edge/node property or policy enum                                                              | Helps separate accepted graph facts from proposed/weak assertions                                  |
+| `semantic_layer`: `ontology`, `reference`, `observation`, `derived_index`                                                                                                                             | Very useful                                                                                                                               | Keep as enum/property                                                                                       | It tells you whether edge is raw observation, reference data, or derived shortcut                  |
+| `canonical_id_rule` in ontology registry                                                                                                                                                              | Very useful but not pure ontology                                                                                                         | Keep in schema documentation or `id_rules.yaml`                                                             | ID rules are implementation contract for dedup                                                     |
+| Edge names like `COMMENT_REFS_CI`, `MANUAL_FALLBACK_CI`, `NHI_REGISTERED_FOR`, `NHI_RESOLVES_TO_CMDB`                                                                                                 | Useful, but some are source-specific resolution paths, not universal ontology                                                             | Keep the important ones, but classify them as **resolution/provenance edges**                               | You need them for auditability, but they should not pollute the simple business graph              |
+| `M1`, `M2`, `Both` everywhere                                                                                                                                                                         | Good for federation, bad inside core LinkML ontology                                                                                      | Move to `pipeline_support` metadata, not core class meaning                                                 | The canonical model should survive if M1/M2 changes                                                |
+
+---
+
+## The clean structure to implement
+
+Split the output into **five files**:
+
+| File                             | Comes from your current generated sheets                             | What goes inside                                                                            |
+| -------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `account_graph.linkml.yaml`      | `ontology_registry_federated` + core part of `edge_schema_federated` | Canonical classes, slots, enums, edge classes                                               |
+| `edge_policy.yaml`               | `edge_schema_federated`                                              | `materialize_policy`, `cardinality`, `semantic_layer`, `assertion_status`, `evidence_class` |
+| `classification_rules.yaml`      | `classification_rules_federated`                                     | Rules like prefix `SU`, `ACOE`, `ISA`, batch prefix, NHI row logic                          |
+| `business_validation_rules.yaml` | `validation_rules_federated`                                         | Rules `VAL-001` to `VAL-028`                                                                |
+| `source_policy.yaml`             | validation + federated notes                                         | Source priority: M2 preferred, old NHI CSV superseded, GDW1/GDW2 coverage, etc.             |
+
+---
+
+# What should go into LinkML vs outside LinkML
+
+| Concept                                                                             |                    Put in LinkML? |          Put outside LinkML? | Why                                                                   |
+| ----------------------------------------------------------------------------------- | --------------------------------: | ---------------------------: | --------------------------------------------------------------------- |
+| `Account`, `Table`, `Database`, `CI`, `ApplicationService`, `DirectoryPerson`, `BU` |                               Yes |                           No | These are canonical graph classes                                     |
+| `HumanAccount`, `ServiceAccount`, `BatchAccount`                                    |  Maybe, but better as enums first |                        Maybe | Safer to use `Account.account_subtype` instead of too many subclasses |
+| `account_subtype = Human / SU / ISA_TD / ISA_OM / Batch`                            |                      Yes, as enum |                           No | This is taxonomy                                                      |
+| `source_record_id`, `evidence_id`                                                   |      Yes, required slots on edges |                           No | Must be enforced for provenance                                       |
+| `M1`, `M2`, `Both`                                                                  |                      No, not core |                          Yes | Pipeline-specific metadata                                            |
+| `materialize_policy`                                                                |                No, not core model |                          Yes | Decides physical graph output                                         |
+| `VAL-001` to `VAL-028`                                                              |     Some simple ones yes; most no |                          Yes | Business validation is custom Python                                  |
+| Prefix rules like `SU`, `ACOE`, `ISA`                                               |                                No |                          Yes | Classification logic before schema validation                         |
+| `canonical_id_rule`                                                                 | Include as description/annotation | Also keep in `id_rules.yaml` | Important for dedup                                                   |
+| Source freshness rules                                                              |                                No |                          Yes | Pipeline validator, not ontology                                      |
+| `assertion_status`                                                                  |              Yes as enum/property |               Also in policy | Useful to distinguish accepted/conditional/pending facts              |
+
+---
+
+# should change
+
+Right now your ontology has many account classes:
+
+```text
+HumanAccount
+HumanUser
+HumanUserOM
+TechnicalAccount
+ServiceAccount
+SystemUserAccount
+InteractiveServiceAccount
+BatchAccount
+BatchAccountOM
+NHIAccount
+```
+
+That is too much for the first LinkML implementation.
+
+I would collapse them like this:
+
+```yaml
+Account:
+  slots:
+    - account_id
+    - account_name
+    - account_class
+    - account_subtype
+    - origin_platform
+    - source_system
+```
+
+With enums:
+
+```yaml
+AccountClassEnum:
+  permissible_values:
+    human:
+    technical:
+    unknown:
+
+AccountSubtypeEnum:
+  permissible_values:
+    human_td:
+    human_omnia:
+    service_su:
+    service_isa_td:
+    service_isa_om:
+    system_user:
+    interactive_service:
+    batch_td:
+    batch_omnia:
+    nhi:
+    unknown:
+
+OriginPlatformEnum:
+  permissible_values:
+    td:
+    omnia:
+    both:
+    enterprise:
+    unknown:
+```
+
+Why? Because your graph query becomes much simpler:
+
+```gremlin
+g.V().hasLabel('Account').has('account_subtype','batch_td')
+```
+
+instead of needing many different labels.
+
+---
+
+
+To be clear, there is a lot that is good:
+
+| Good thing                                    | Why it matters                                       |
+| --------------------------------------------- | ---------------------------------------------------- |
+| It has explicit edge registry                 | Very good for graph governance                       |
+| It has cardinality                            | Helps validation and dedup                           |
+| It has evidence class                         | Important for trust                                  |
+| It separates accepted / conditional / pending | Good graph quality control                           |
+| It has source/pipeline notes                  | Good for M1/M2 federation                            |
+| It has validation rules                       | Essential before loading graph                       |
+| It has classification precedence              | Very useful for deterministic account classification |
+| It has canonical ID rules                     | Critical for dedup                                   |
+
+The problem is only **layer separation**.
+
+---
+
+# How it should look conceptually
+
+```text
+Raw Excel / CSV / DocDB / M1 / M2
+        ↓
+source_policy.yaml
+        ↓
+source_mapping.yaml
+        ↓
+standardisation.py
+        ↓
+classification_rules.yaml
+        ↓
+business_validation_rules.yaml
+        ↓
+LinkML schema validation
+        ↓
+canonical vertices + edges
+        ↓
+edge_policy.yaml decides what to materialise
+        ↓
+DuckDB / JanusGraph exports
+```
+
+---
+
+# Exact implementation decision
+
+Do this:
+
+| Now | Action                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------- |
+| 1   | Use `ontology_registry_federated` to create LinkML **classes/enums**                                    |
+| 2   | Use `edge_schema_federated` to create LinkML **edge classes** plus separate `edge_policy.yaml`          |
+| 3   | Use `classification_rules_federated` as separate `classification_rules.yaml`                            |
+| 4   | Use `validation_rules_federated` as separate `business_validation_rules.yaml`                           |
+| 5   | Do **not** put M1/M2 operational rules directly into the canonical ontology                             |
+| 6   | Add required provenance fields: `source_record_id`, `evidence_id`, `assertion_status`, `evidence_class` |
+| 7   | Prefer one canonical `Account` class + subtype enum over many account node labels                       |
+
+---
+
+# One clean example
+
+Instead of this as many node labels:
+
+```text
+ServiceAccount
+SystemUserAccount
+InteractiveServiceAccount
+BatchAccount
+BatchAccountOM
+NHIAccount
+```
+
+Use:
+
+```yaml
+Account:
+  slots:
+    - account_id
+    - account_name
+    - account_class
+    - account_subtype
+    - origin_platform
+```
+
+Example values:
+
+```yaml
+account_id: account:td:SVC_ACCOUNT.BURBS157
+account_name: SVC_ACCOUNT.BURBS157
+account_class: technical
+account_subtype: service_su
+origin_platform: td
+```
+
+Then your classification rules decide:
+
+```text
+if username starts with SU / SUTB / SUAL / SUGA:
+    account_subtype = service_su
+
+if username starts with ACOE / ISA:
+    account_subtype = service_isa_td
+
+if batch prefix PU / BU / TU / OU:
+    account_subtype = batch_td
+```
+
+Then LinkML validates:
+
+```text
+service_su is allowed
+td is allowed
+technical is allowed
+```
+
+---
+
+# summary
+
+| Part                 | Verdict                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| Ontology registry    | mixed with pipeline metadata                                    |
+| Edge schema          | keep it, but split schema vs policy                                                |
+| Federated notes      | should become source/pipeline policy, not core ontology                             |
+| Validation rules     | implement as custom validator, not mostly LinkML                                      |
+| Classification rules | implement as deterministic classification layer before validation                         |
+| flaw                 | mixed in one conceptual layer                                                          |
+| to be corrected      | Split into LinkML model + classification rules + validation rules + edge policy + source policy |
+
+The clean version is: **LinkML defines what a valid canonical graph object is. classification and validation rules decide how raw M1/M2/source data becomes those canonical graph objects.**
