@@ -1,0 +1,72 @@
+Do not redesign the model.
+
+Context:
+I am extending the existing CommDataIQ graph explorer pipeline. The current repo already creates service_account nodes and consumed_by edges into entities.parquet and edges.parquet. My two-week goal is a working local extension:
+
+Existing service_account nodes
+  → canonical account classification
+  → owner / BU / CI / app enrichment
+  → validation / provenance rules
+  → DuckDB graph explorer output
+
+I have four design CSVs:
+1. ontology_registry_federated.csv
+2. edge_schema_federated.csv
+3. classification_rules_federated.csv
+4. validation_rules_federated.csv
+
+Your task is NOT to rewrite everything and NOT to generate ETL code.
+
+Your task is to refactor the design CSVs into these implementation files only:
+
+1. model_linkml/schema/account_graph.yaml
+   - canonical LinkML schema only
+   - classes, slots, enums
+   - no M1/M2 pipeline logic inside class definitions
+   - include Account, Table, Database, Person, BusinessUnit, ConfigurationItem, ApplicationService
+   - include edge classes for ACCESSED, OWNED_BY, BELONGS_TO_BU, LINKED_TO_CI, RESOLVED_IN_CMDB, CONNECTS_TO_XCOM where relevant
+   - include provenance slots source_record_id, evidence_id, assertion_status, evidence_class
+
+2. model_linkml/edge_policy.yaml
+   - extracted from edge_schema_federated.csv
+   - include edge_label, source_vertex, target_vertex, semantic_layer, materialize_policy, assertion_status, evidence_class, cardinality, pipeline_support
+
+3. model_linkml/classification_rules.yaml
+   - extracted from classification_rules_federated.csv
+   - preserve rule_id, precedence, platform, condition, result account_class, result account_subtype, origin_platform
+
+4. model_linkml/business_validation_rules.yaml
+   - extracted from validation_rules_federated.csv
+   - preserve rule_id, severity, rule, pipeline, explanation
+   - mark each rule as exactly one of:
+     schema_validation
+     business_validation
+     source_freshness
+     graph_integrity
+     provenance_validation
+
+5. model_linkml/source_policy.yaml
+   - source priority and freshness rules only
+   - include rules such as M2 preferred over M1 where stated, old NHI CSV superseded, GDW1+GDW2 coverage, Work Location freshness
+
+Hard constraints:
+- Do not invent new node classes unless they exist in the input.
+- Do not collapse evidence/provenance fields.
+- Do not remove source_record_id or evidence_id.
+- Do not put M1/M2 operational logic inside the canonical LinkML class definitions.
+- Do not generate ETL code yet.
+- Do not produce explanatory essays.
+- Output only the five YAML files.
+
+
+
+
+Now review these five YAML files for internal consistency only. Check:
+1. every edge source/target class exists in account_graph.yaml
+2. every enum value referenced by slots exists
+3. every classification result account_subtype exists in the LinkML enum
+4. every validation rule category is one of the allowed five categories
+5. every materialised edge has provenance requirements
+Do not redesign. Return only problems and exact fixes.
+
+
