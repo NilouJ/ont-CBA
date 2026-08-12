@@ -1,70 +1,81 @@
-I have copied the existing manual Graph Explorer visual schema JSON into:
+We need to investigate real canonical gaps before changing LinkML.
 
-model_linkml/reference/manual_visual_schema.json
-
-This manual JSON is a frontend/visual schema reference only.
-
-Do not rewrite LinkML.
+Do not change any YAML files yet.
+Do not update LinkML yet.
+Do not generate ETL code yet.
 Do not redesign the model.
-Do not generate ETL code.
-Do not replace the canonical schema with the manual JSON.
 
-Compare:
+Use only:
+- Method3 code
+- extraction/method3_extraction_report.md
+- extraction/method3_sources.csv
+- extraction/method3_joins.csv
+- extraction/method3_literals.csv
+- extraction/method3_output_columns.csv
+- extraction/method3_audit_fields.csv
+- model_linkml/reference/manual_visual_schema.json
+- model_linkml/reference/visual_schema_mapping.md
+- model_linkml/canonical_contract_table.md
 
-1. model_linkml/reference/manual_visual_schema.json
-2. model_linkml/account_graph.yaml
-3. model_linkml/edge_policy.yaml
-4. model_linkml/source_mapping.yaml
-5. model_linkml/classification_rules.yaml
+Create this file:
 
-Goal:
-Create a mapping between the old/manual visual graph schema and the new canonical LinkML model.
+model_linkml/reference/gap_investigation_report.md
 
-Important design rule:
-HumanAccount, ServiceAccount, and BatchAccount in the visual schema are visual aliases/views of canonical Account, not separate physical canonical node classes.
+Investigate these gaps:
 
-Use this mapping principle:
-- HumanAccount = Account where canonical_account_subtype = Human
-- ServiceAccount = Account where canonical_account_subtype = ServiceAccount
-- BatchAccount = Account where canonical_account_subtype = Batch
+1. CommDataIQAsset
+   Question: How does Method3 connect database/table access records to CommDataIQ catalogue/assets?
+   Check whether the join is by:
+   - table only
+   - database only
+   - database + table
+   - db_table
+   - cdiq_name / cdiq_id
+   - cdiq_layer / cdiq_data_platform
+   - normalised or uppercased fields
+   - fuzzy or exact matching
 
-Return exactly one file:
+2. DirectoryPerson
+   Question: How does Method3 resolve real people/owners/managers?
+   Check:
+   - AD/AAD join
+   - Workday/Work Location join
+   - owner/contact email join
+   - manager fallback
+   - person ID/email/name fields
+   - whether DirectoryPerson should be separate from Identity
 
-model_linkml/reference/visual_schema_mapping.md
+3. XCOMSystem
+   Question: How does Method3 represent XCOM/downstream batch systems?
+   Check:
+   - exact source file/table
+   - join key
+   - xcom_remote or equivalent column
+   - whether it applies only to Batch accounts
+   - whether it is distinct from ApplicationService
 
-The file must include these tables:
+4. ConfigurationItem → ApplicationService
+   Question: How does Method3 connect CI/CMDB records to application/service?
+   Check:
+   - CI key columns
+   - CMDB app/service columns
+   - app/service identifier
+   - app/service name
+   - whether CI-to-application edge is exact, conditional, or missing
 
-1. Visual node type → canonical LinkML class
-Columns:
-- visual_node_type
-- canonical_class
-- filter_condition_if_alias
-- keep_as_physical_class_yes_no
-- notes
+For each gap, return a table with:
 
-2. Visual edge type → canonical edge policy
-Columns:
-- visual_edge_label
-- canonical_edge_label
-- source_visual_node
-- target_visual_node
-- source_canonical_class
-- target_canonical_class
-- exists_in_edge_policy_yes_no
-- notes
+| gap | method3_function | source_files_tables | join_keys | output_columns | match_type_exact_or_conditional | stable_id_available | proposed_canonical_class | proposed_edges | provenance_columns | confidence | implementation_decision |
 
-3. Missing or mismatched items
-Columns:
-- item
-- problem
-- recommended_fix
-- change_linkml_yes_no
-- change_visual_schema_yes_no
+Implementation decision must be one of:
+- add_now
+- add_conditional_now
+- visual_mapping_only
+- backlog
+- do_not_add
 
 Rules:
-- Do not change any YAML files yet.
-- Do not create new canonical account classes.
-- If a visual node/edge is only a display alias, mark it as visual_alias.
-- If something exists in manual JSON but not in LinkML/edge_policy, list it as mismatch.
-- If something exists in LinkML/edge_policy but not in manual JSON, list it as missing_from_visual_schema.
-- Return only the created mapping file content and a short summary.
+- If evidence is not explicit, write "not found".
+- Do not infer silently.
+- Use line numbers or extraction file references where available.
+- At the end, give a short "Recommended minimal LinkML changes" section.
