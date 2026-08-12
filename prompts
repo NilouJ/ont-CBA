@@ -1,20 +1,69 @@
-Yes, apply those fixes.
+Good. Now use the corrected canonical_contract_table.md as the only source of truth.
+
+Generate exactly these five files:
+
+1. model_linkml/account_graph.yaml
+2. model_linkml/source_mapping.yaml
+3. model_linkml/classification_rules.yaml
+4. model_linkml/edge_policy.yaml
+5. model_linkml/business_validation_rules.yaml
 
 Rules:
-1. For source_files_or_tables_used, join_keys_used, and final_output_columns_produced:
-   - replace vague wording with explicit values from the extraction files where available
-   - if the extraction does not explicitly support the value, write "not found"
-   - do not infer silently
+- Do not redesign.
+- Do not add new account classes.
+- Use canonical_account_class and canonical_account_subtype as the graph taxonomy.
+- Preserve method3_account_type and method3_account_subtype only as metadata fields.
+- Preserve derived_post_method3 for Unknown/Unknown rows.
+- Use explicit source files, join keys, and final output columns from the corrected contract table.
+- If a value is not found, keep it as "not found".
+- Do not generate ETL code yet.
 
-2. For Unknown / Unknown rows:
-   - mark them clearly as derived_post_method3 = true
-   - explain that Unknown is not a native Method3 output class
-   - keep unresolved/ambiguous reason in unresolved_conflict_handling
+Required taxonomy:
+AccountClassEnum:
+- Human
+- NonHuman
+- Unknown
 
-3. Do not redesign the taxonomy.
-4. Do not generate LinkML yet.
-5. Do not generate ETL code yet.
+AccountSubtypeEnum:
+- Human
+- ServiceAccount
+- Batch
+- Unknown
 
-After applying the fixes, return:
-- the updated canonical_contract_table.md
-- a short list of exact changes made
+Required core graph classes:
+- Account
+- Identity
+- BusinessUnit
+- Database
+- Table
+- ConfigurationItem
+- ApplicationService
+- SandpitRecord if supported by the contract table
+
+Required edge types:
+- ACCESSED
+- HAS_IDENTITY
+- BELONGS_TO
+- IN_DATABASE
+- IS_SANDPIT
+- REGISTERED_IN
+- HAS_OWNER
+- OWNED_BY
+- ASSIGNED_CI
+- HAS_XCOM_TARGET if supported by the contract table
+
+Required metadata/provenance fields:
+- method3_account_type
+- method3_account_subtype
+- derived_post_method3
+- classification_reason
+- classification_confidence
+- source_file
+- sheet
+- source_record_id
+- evidence_id
+- evidence_class
+- assertion_status
+- resolution_status
+
+Output only the five YAML file contents.
