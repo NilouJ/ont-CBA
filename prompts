@@ -1,33 +1,83 @@
-Pause. I think we may have lost the Workday/BU resolution path.
+Decision: add DirectoryPerson -> BELONGS_TO -> BusinessUnit as a derived/conditional edge.
 
-Do not change files yet.
+Do not treat it as a raw Method3 edge.
+Do not claim Method3 directly outputs a person-to-BU join.
+Do not add REPORTS_TO.
+Do not add RESOLVED_IN_WORKDAY.
+Do not add Identity -> RESOLVES_TO_PERSON unless Method3 has explicit evidence.
 
-Check the final account_graph.yaml, edge_policy.yaml, final_visual_schema_plan.md, and visjs output if generated.
+Reason:
+Method3 provides Workday/team evidence as flattened columns on the account row:
+- wd_team_2
+- wd_team_3
+- wd_team_4
+- wd_cmdb_owned_by_team_2
+- wd_cmdb_owned_by_team_3
+- wd_cmdb_owned_by_team_4
 
-Verify whether the model has an explicit Workday/person-to-BU path:
+The ETL can derive a BusinessUnit node and a DirectoryPerson -> BELONGS_TO -> BusinessUnit edge from those fields.
 
-DirectoryPerson -> BELONGS_TO -> BusinessUnit
+Update only:
+1. model_linkml/account_graph.yaml
+2. model_linkml/policy/edge_policy.yaml
+3. model_linkml/source_mapping.yaml if needed
+4. model_linkml/references/final_visual_schema_plan.md if needed
+5. model_linkml/scripts/convert_schema_to_visjs.py only if the converter needs to include the new edge
 
-Also verify whether the model has an explicit identity/person resolution path:
+Add/update edge:
 
-Account -> HAS_IDENTITY -> Identity
-Identity -> RESOLVES_TO_PERSON -> DirectoryPerson
+BELONGS_TO:
+- source: DirectoryPerson
+- target: BusinessUnit
+- semantic_layer: derived_reference
+- materialisation_status: conditional
+- assertion_status: derived
+- evidence_class: derived_from_workday_team_columns
+- provenance_required: true
 
-or an equivalent supported path.
+Evidence columns:
+For normal account/person path:
+- wd_team_2
+- wd_team_3
+- wd_team_4
+- source_file
+- sheet
+- source_record_id
+- evidence_id
 
-Return only this table:
+For CI-owner path:
+- wd_cmdb_owned_by_team_2
+- wd_cmdb_owned_by_team_3
+- wd_cmdb_owned_by_team_4
+- cmdb_owned_by
+- wd_cmdb_owned_by_email
+- source_file
+- sheet
+- source_record_id
+- evidence_id
 
-| path | exists_yes_no | edge_label | source_class | target_class | supported_by_method3_yes_no | evidence_columns | action_needed |
+Materialisation rule:
+Create DirectoryPerson -> BELONGS_TO -> BusinessUnit only when:
+- a DirectoryPerson identifier/email/name exists
+AND
+- at least one usable BU/team field exists:
+  wd_team_2 OR wd_team_3 OR wd_team_4 OR wd_cmdb_owned_by_team_2 OR wd_cmdb_owned_by_team_3 OR wd_cmdb_owned_by_team_4
 
-Check these paths:
-1. Account -> HAS_IDENTITY -> Identity
-2. Identity -> RESOLVES_TO_PERSON -> DirectoryPerson
-3. DirectoryPerson -> BELONGS_TO -> BusinessUnit
-4. Account -> HAS_OWNER -> DirectoryPerson
-5. DirectoryPerson/owner -> BusinessUnit through Workday fields wd_team_2/wd_team_3/wd_team_4
+If multiple team fields exist, use the agreed BU level as the BusinessUnit key. For now use wd_team_3 if available, otherwise wd_team_4, otherwise wd_team_2. Record which column was used as bu_source_column.
 
-Important:
-- Do not invent unsupported AAD-to-person edges.
-- If Method3 has AD/Workday evidence to connect Identity to DirectoryPerson, mark RESOLVES_TO_PERSON as add_now.
-- If Method3 only has person/owner fields directly on the account row, keep Account -> DirectoryPerson and DirectoryPerson -> BusinessUnit.
-- The BU edge should be DirectoryPerson -> BusinessUnit, not BusinessUnit -> Identity.
+Keep wd_team_2/3/4 as properties on DirectoryPerson as well.
+
+After changes, rerun:
+python3 model_linkml/check_consistency.py
+.venv/bin/linkml-lint model_linkml/account_graph.yaml
+.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
+python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
+
+Return only:
+- edge added/updated
+- evidence columns used
+- files changed
+- checker result
+- lint error count
+- validation result
+- visjs converter result
