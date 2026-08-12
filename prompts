@@ -1,60 +1,13 @@
-Yes — the canonical contract table is the next file to generate.
+Now review model_linkml/canonical_contract_table.md for consistency.
 
-Use ONLY these existing extraction artefacts:
-- extraction/method3_extraction_report.md
-- extraction/method3_output_columns.csv
-- extraction/method3_joins.csv
-- extraction/method3_literals.csv
-- extraction/method3_sources.csv
-- extraction/method3_audit_fields.csv
+Check:
+1. canonical account classes are only Human, NonHuman, Unknown
+2. canonical account subtypes are only Human, ServiceAccount, Batch, Unknown
+3. Method3 raw types are preserved only as metadata
+4. no duplicate graph node classes are introduced
+5. every row has source files, join keys, output columns, graph nodes/edges, and evidence fields or says "not found"
+6. Unknown/Unknown is clearly marked as downstream-derived, not native Method3 output
 
-Do not ask me more context.
-Do not generate LinkML yet.
-Do not generate ETL code yet.
-Do not redesign the model.
-
-Create this file:
-
-model_linkml/canonical_contract_table.md
-
-Purpose:
-This table is the bridge from Method3 output/logic to the graph schema and ETL.
-
-The table must contain these columns:
-
-1. canonical_account_class
-2. canonical_account_subtype
-3. method3_account_type
-4. method3_account_subtype
-5. classification_condition_in_method3
-6. source_files_or_tables_used
-7. join_keys_used
-8. resolution_path
-9. final_output_columns_produced
-10. canonical_graph_nodes_required
-11. canonical_graph_edges_required
-12. provenance_evidence_fields_available
-13. unresolved_conflict_handling
-14. confidence_or_caveat
-
-Canonical taxonomy must be exactly:
-
-- Human / Human
-- NonHuman / ServiceAccount
-- NonHuman / Batch
-- Unknown / Unknown
-
-Important mapping rules:
-- Method3 User / Human-Teradata / Human-Omnia → Human / Human
-- Method3 Application with ACOE_, ISA_, SU service-account evidence → NonHuman / ServiceAccount
-- Method3 Batch / GDW-Batch / batch-prefix accounts → NonHuman / Batch
-- unresolved or ambiguous cases → Unknown / Unknown
-
-Important:
-- Preserve Method3 values only as metadata:
-  - method3_account_type
-  - method3_account_subtype
-- Do not create separate graph classes for User, Application, Batch, Human-Teradata, Human-Omnia, GDW-Batch, ACOE-service-account, or SU-service-account.
-- Use one canonical Account concept with account_class and account_subtype.
-- If something is not explicit in the extraction files, write "not found".
-- At the end, add a short "uncertainties" section.
+Return only:
+- issues found
+- exact fixes applied
