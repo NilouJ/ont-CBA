@@ -1,14 +1,37 @@
-Good. 7/7 consistency checks pass.
+Fix only the LinkML built-in type import issue.
 
-Do not change the YAMLs further.
+Do not change the ontology.
+Do not change account classes.
+Do not change account subtypes.
+Do not rename enum values.
+Do not change source_mapping, edge_policy, classification_rules, or validation_rules.
 
-Now give me the exact local commands to:
-1. install LinkML if needed
-2. create model_linkml/examples/account.valid.yaml
-3. create model_linkml/examples/account.invalid.yaml
-4. run LinkML validation against model_linkml/account_graph.yaml
-5. generate LinkML docs
-6. generate Python datamodel
-7. generate JSON schema
+In model_linkml/account_graph.yaml:
+1. Add the required LinkML import for built-in types:
+   imports:
+     - linkml:types
 
-Use the current paths in this repo.
+2. Ensure the schema has normal LinkML header fields if missing:
+   id:
+   name:
+   prefixes:
+   default_prefix:
+   default_range:
+
+3. Keep all current ranges such as string, integer, and boolean.
+
+After the minimal fix, rerun:
+
+.venv/bin/linkml-lint model_linkml/account_graph.yaml
+
+Then run:
+
+.venv/bin/linkml-validate \
+  --schema model_linkml/account_graph.yaml \
+  --target-class Account \
+  model_linkml/examples/valid/account.valid.yaml
+
+Return only:
+- exact header/import changes made
+- whether lint has any remaining errors
+- whether validation passes
