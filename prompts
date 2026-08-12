@@ -1,62 +1,31 @@
-Good. The evidence-supported LinkML update passes:
-- checker 7/7
-- lint 0 errors
-- validation no issues
+The final_visual_schema_plan.md is approved.
 
-Before ETL/adapter, I want to visualise the final model.
+Now generate the aligned visual schema JSON.
 
-Do not change LinkML.
-Do not change edge_policy.
-Do not change source_mapping.
-Do not generate ETL code.
-
-Task:
-Align the existing manual visual schema with the final source-of-truth model.
-
-Inputs:
+Input:
+- model_linkml/references/manual_visual_schema.json
+- model_linkml/references/final_visual_schema_plan.md
 - model_linkml/account_graph.yaml
 - model_linkml/policy/edge_policy.yaml
-- model_linkml/source_mapping.yaml
-- model_linkml/references/manual_visual_schema.json
-- model_linkml/references/visual_schema_mapping.md
-- model_linkml/references/gap_investigation_report.md
 
-Output first:
-model_linkml/references/final_visual_schema_plan.md
-
-The plan must show:
-
-1. Final visual node types
-Columns:
-- visual_node_type
-- canonical_class
-- visual_alias_yes_no
-- filter_condition
-- reason
-
-2. Final visual edge types
-Columns:
-- visual_edge_label
-- canonical_edge_label
-- source_visual_node
-- target_visual_node
-- source_canonical_class
-- target_canonical_class
-- materialisation_status
-- provenance_required_yes_no
-- reason
-
-3. Disabled/backlog visual items
-Columns:
-- old_visual_item
-- reason_disabled
-- backlog_or_removed
+Output:
+model_linkml/generated/visual_schema_v2.json
 
 Rules:
-- HumanAccount, ServiceAccount, BatchAccount are visual aliases of Account.
-- CommDataIQAsset, DirectoryPerson, ConfigurationItem, ApplicationService, XCOMSystem are real physical canonical classes.
-- CATALOGUED_AS means Table -> CommDataIQAsset.
-- HAS_XCOM_TARGET means Account -> XCOMSystem.
-- RESOLVES_TO_APP means ConfigurationItem -> ApplicationService.
-- Do not invent unsupported edges.
-- Do not modify files yet.
+- Do not overwrite manual_visual_schema.json.
+- Do not change LinkML.
+- Do not change edge_policy.
+- Preserve useful layout, swimlane, legend, node positioning, and colours from the manual visual schema where possible.
+- HumanAccount, ServiceAccount, and BatchAccount remain visual aliases of Account.
+- CommDataIQAsset, DirectoryPerson, ConfigurationItem, ApplicationService, XCOMSystem, Table, Database, and BusinessUnit are real visual/canonical nodes.
+- CATALOGUED_AS must show Table -> CommDataIQAsset.
+- RESOLVES_TO_APP must show ConfigurationItem -> ApplicationService.
+- HAS_XCOM_TARGET must show BatchAccount -> XCOMSystem.
+- Unsupported/backlog old visual edges must be marked disabled/backlog, not silently deleted.
+
+Return only:
+1. output file path
+2. node count
+3. edge count
+4. disabled/backlog item count
+5. any assumptions made
