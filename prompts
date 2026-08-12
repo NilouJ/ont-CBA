@@ -1,209 +1,25 @@
+You have access to the repo and Method3.
+
+Before creating any ontology or LinkML, write a deterministic Python extractor script that inspects Method3 and its output files.
+
+The script should extract:
+1. Method3 Python files/functions/classes
+2. input files/tables referenced
+3. output files generated
+4. final Excel/CSV/parquet output columns
+5. pandas/polars merge/join operations and join keys
+6. literal account classes/subtypes/status values used in the code
+7. source/evidence/provenance fields if present
+8. unresolved/conflict/audit output columns if present
+
+The script should write:
+- method3_extraction_report.md
+- method3_output_columns.csv
+- method3_joins.csv
+- method3_literals.csv
+
 Do not redesign the model.
+Do not generate LinkML yet.
+Do not generate ETL yet.
 
-Context:
-I am extending the existing CommDataIQ graph explorer pipeline. The current repo already creates service_account nodes and consumed_by edges into entities.parquet and edges.parquet. My two-week goal is a working local extension:
-
-Existing service_account nodes
-  → canonical account classification
-  → owner / BU / CI / app enrichment
-  → validation / provenance rules
-  → DuckDB graph explorer output
-
-I have four design CSVs:
-1. ontology_registry_federated.csv
-2. edge_schema_federated.csv
-3. classification_rules_federated.csv
-4. validation_rules_federated.csv
-
-Your task is NOT to rewrite everything and NOT to generate ETL code.
-
-Your task is to refactor the design CSVs into these implementation files only:
-
-1. model_linkml/schema/account_graph.yaml
-   - canonical LinkML schema only
-   - classes, slots, enums
-   - no M1/M2 pipeline logic inside class definitions
-   - include Account, Table, Database, Person, BusinessUnit, ConfigurationItem, ApplicationService
-   - include edge classes for ACCESSED, OWNED_BY, BELONGS_TO_BU, LINKED_TO_CI, RESOLVED_IN_CMDB, CONNECTS_TO_XCOM where relevant
-   - include provenance slots source_record_id, evidence_id, assertion_status, evidence_class
-
-2. model_linkml/edge_policy.yaml
-   - extracted from edge_schema_federated.csv
-   - include edge_label, source_vertex, target_vertex, semantic_layer, materialize_policy, assertion_status, evidence_class, cardinality, pipeline_support
-
-3. model_linkml/classification_rules.yaml
-   - extracted from classification_rules_federated.csv
-   - preserve rule_id, precedence, platform, condition, result account_class, result account_subtype, origin_platform
-
-4. model_linkml/business_validation_rules.yaml
-   - extracted from validation_rules_federated.csv
-   - preserve rule_id, severity, rule, pipeline, explanation
-   - mark each rule as exactly one of:
-     schema_validation
-     business_validation
-     source_freshness
-     graph_integrity
-     provenance_validation
-
-5. model_linkml/source_policy.yaml
-   - source priority and freshness rules only
-   - include rules such as M2 preferred over M1 where stated, old NHI CSV superseded, GDW1+GDW2 coverage, Work Location freshness
-
-Hard constraints:
-- Do not invent new node classes unless they exist in the input.
-- Do not collapse evidence/provenance fields.
-- Do not remove source_record_id or evidence_id.
-- Do not put M1/M2 operational logic inside the canonical LinkML class definitions.
-- Do not generate ETL code yet.
-- Do not produce explanatory essays.
-- Output only the five YAML files.
-
-
-
-
-Now review these five YAML files for internal consistency only. Check:
-1. every edge source/target class exists in account_graph.yaml
-2. every enum value referenced by slots exists
-3. every classification result account_subtype exists in the LinkML enum
-4. every validation rule category is one of the allowed five categories
-5. every materialised edge has provenance requirements
-Do not redesign. Return only problems and exact fixes.
-
-
-
-
-
-
-
-
-
-
-Yes, this is actually **good progress**, but treat it as **draft output that still needs local verification**, not truth yet.
-
-What it says is basically:
-
-```text
-The five YAML files were revised to match your preferred classification:
-Human / Human
-NonHuman / ServiceAccount
-NonHuman / Batch
-Unknown / Unknown
-```
-
-That is the right simplified taxonomy for your 2-week slice.
-
-But now your move is **not more prompting**. Your move is to **copy the five YAML files into your repo and run real validation locally**.
-
-| Step | What you do now                                                    | Exact purpose                                                                            |
-| ---: | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-|    1 | Copy the revised files into `model_linkml/`                        | Stop cycling in chat; create real files                                                  |
-|    2 | Run `linkml validate` on one valid and one invalid Account example | Prove the LinkML schema actually works                                                   |
-|    3 | Run a small consistency script across the YAML files               | Prove edge classes, enum values, classification results, and validation categories align |
-|    4 | Freeze these YAMLs as v1.1.0                                       | Use them as the model/rule contract                                                      |
-|    5 | Move to repo adapter/enrichment script                             | Start implementing the actual CommDataIQ extension                                       |
-
-Use this structure:
-
-```bash
-mkdir -p model_linkml/schema
-mkdir -p model_linkml/policy
-mkdir -p model_linkml/examples
-mkdir -p model_linkml/generated/docs
-mkdir -p model_linkml/generated/datamodel
-mkdir -p model_linkml/generated/jsonschema
-```
-
-Put files here:
-
-```text
-model_linkml/schema/account_graph.yaml
-model_linkml/policy/edge_policy.yaml
-model_linkml/policy/classification_rules.yaml
-model_linkml/policy/business_validation_rules.yaml
-model_linkml/policy/source_policy.yaml
-```
-
-Then install/run LinkML:
-
-```bash
-python -m pip install linkml linkml-runtime
-
-linkml validate \
-  --schema model_linkml/schema/account_graph.yaml \
-  --target-class Account \
-  model_linkml/examples/account.valid.yaml
-
-linkml generate doc model_linkml/schema/account_graph.yaml \
-  --output-directory model_linkml/generated/docs
-
-linkml generate python model_linkml/schema/account_graph.yaml \
-  > model_linkml/generated/datamodel/account_graph.py
-
-linkml generate json-schema model_linkml/schema/account_graph.yaml \
-  > model_linkml/generated/jsonschema/account_graph.schema.json
-```
-
-Now create the two tiny examples:
-
-```bash
-cat > model_linkml/examples/account.valid.yaml <<'YAML'
-node_id: account:td:SVC_ACCOUNT.BURBS157
-label: Account
-account_name: SVC_ACCOUNT.BURBS157
-account_class: NonHuman
-account_subtype: ServiceAccount
-origin_platform: td
-resolution_status: resolved
-YAML
-```
-
-```bash
-cat > model_linkml/examples/account.invalid.yaml <<'YAML'
-node_id: account:td:SVC_ACCOUNT.BURBS157
-label: ServiceAccount
-account_name: SVC_ACCOUNT.BURBS157
-account_class: Technical
-account_subtype: ISA_TD
-origin_platform: Teradata
-resolution_status: done
-YAML
-```
-
-The valid one should pass. The invalid one should fail.
-
-Important: do **not** ask GPT to keep revising forever. Ask it only one more thing after you copy the YAMLs:
-
-```text
-Write a Python consistency checker for these five YAML files. It should check:
-1. every edge source/target class in edge_policy.yaml exists in account_graph.yaml
-2. every classification result account_class exists in AccountClassEnum
-3. every classification result account_subtype exists in AccountSubtypeEnum
-4. every validation rule category is one of the allowed five categories
-5. every materialised edge policy requires source_record_id, evidence_id, assertion_status, and evidence_class
-Do not redesign the YAMLs. Only write the checker.
-```
-
-Then the actual implementation starts:
-
-```text
-existing entities.parquet / edges.parquet
-        ↓
-read service_account nodes
-        ↓
-apply classification_rules.yaml
-        ↓
-join owner / BU / CI / app lookup
-        ↓
-create enriched nodes and edges
-        ↓
-run validation/provenance checks
-        ↓
-write enriched entities.parquet / edges.parquet
-        ↓
-./cdiq.py graph-explorer build
-```
-
-So: **yes, accept this direction. Now stop modelling and verify the YAML files locally.**
-
-
-
+After writing the script, explain how to run it from the repo root.
