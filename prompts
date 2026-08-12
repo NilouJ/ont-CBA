@@ -1,81 +1,115 @@
-We need to investigate real canonical gaps before changing LinkML.
+Good. Apply only the evidence-supported schema changes from gap_investigation_report.md.
 
-Do not change any YAML files yet.
-Do not update LinkML yet.
-Do not generate ETL code yet.
 Do not redesign the model.
+Do not change AccountClassEnum.
+Do not change AccountSubtypeEnum.
+Do not create HumanAccount, ServiceAccount, or BatchAccount as physical classes.
+They remain visual aliases of Account.
 
-Use only:
-- Method3 code
-- extraction/method3_extraction_report.md
-- extraction/method3_sources.csv
-- extraction/method3_joins.csv
-- extraction/method3_literals.csv
-- extraction/method3_output_columns.csv
-- extraction/method3_audit_fields.csv
-- model_linkml/reference/manual_visual_schema.json
-- model_linkml/reference/visual_schema_mapping.md
-- model_linkml/canonical_contract_table.md
+Update only:
+1. model_linkml/account_graph.yaml
+2. model_linkml/policy/edge_policy.yaml
+3. model_linkml/source_mapping.yaml
+4. model_linkml/references/visual_schema_mapping.md if needed
 
-Create this file:
+Apply these decisions:
 
-model_linkml/reference/gap_investigation_report.md
+1. Add CommDataIQAsset as a canonical class.
+   - It is the bridge to CommDataIQ/DuckDB catalogue asset layer.
+   - No cdiq_id exists, so use derived asset identity from uppercase database + table.
+   - Include slots:
+     asset_id
+     asset_id_source
+     database
+     table
+     db_table
+     cdiq_status
+     cdiq_layer
+     cdiq_data_platform
+     source_file
+     sheet
 
-Investigate these gaps:
+2. Add CATALOGUED_AS edge:
+   - source: Table
+   - target: CommDataIQAsset
+   - materialise only when Method3 cdiq evidence exists.
+   - join evidence: uppercase database + table.
+   - If only table evidence exists or cdiq_status is "not found", do not create accepted edge; mark unresolved/audit.
+   - provenance_required: true.
 
-1. CommDataIQAsset
-   Question: How does Method3 connect database/table access records to CommDataIQ catalogue/assets?
-   Check whether the join is by:
-   - table only
-   - database only
-   - database + table
-   - db_table
-   - cdiq_name / cdiq_id
-   - cdiq_layer / cdiq_data_platform
-   - normalised or uppercased fields
-   - fuzzy or exact matching
+3. Add DirectoryPerson as canonical class.
+   - Purpose: real person/owner from AD/Workday/SA contact/CI owner.
+   - Include slots:
+     person_id
+     display_name
+     email
+     ad_id
+     ad_upn
+     ad_display_name
+     sa_contactname
+     sa_contactemail
+     cmdb_owned_by
+     cmdb_managed_by
+     wd_cmdb_owned_by_email
+     wd_team_2
+     wd_team_3
+     wd_team_4
+     source_file
+     sheet
 
-2. DirectoryPerson
-   Question: How does Method3 resolve real people/owners/managers?
-   Check:
-   - AD/AAD join
-   - Workday/Work Location join
-   - owner/contact email join
-   - manager fallback
-   - person ID/email/name fields
-   - whether DirectoryPerson should be separate from Identity
+4. Update owner/person edges to use DirectoryPerson where supported:
+   - HAS_OWNER: Account -> DirectoryPerson
+   - OWNED_BY: ConfigurationItem -> DirectoryPerson
+   - BELONGS_TO: DirectoryPerson -> BusinessUnit
 
-3. XCOMSystem
-   Question: How does Method3 represent XCOM/downstream batch systems?
-   Check:
-   - exact source file/table
-   - join key
-   - xcom_remote or equivalent column
-   - whether it applies only to Batch accounts
-   - whether it is distinct from ApplicationService
+5. Do NOT add unsupported old visual edges:
+   - HumanAccount OWNED_BY DirectoryPerson
+   - REPORTS_TO
+   - AADIdentity RESOLVES_TO DirectoryPerson
+   unless Method3 evidence explicitly supports them. Mark them visual/backlog only.
 
-4. ConfigurationItem → ApplicationService
-   Question: How does Method3 connect CI/CMDB records to application/service?
-   Check:
-   - CI key columns
-   - CMDB app/service columns
-   - app/service identifier
-   - app/service name
-   - whether CI-to-application edge is exact, conditional, or missing
+6. Add XCOMSystem as canonical class.
+   - Purpose: batch remote scheduling/execution system.
+   - It is not ApplicationService.
+   - Include slots:
+     xcom_system_id
+     xcom_remote
+     source_file
+     sheet
 
-For each gap, return a table with:
+7. Add HAS_XCOM_TARGET edge:
+   - source: Account
+   - target: XCOMSystem
+   - materialise only for Batch accounts when xcom_remote exists.
+   - provenance_required: true.
 
-| gap | method3_function | source_files_tables | join_keys | output_columns | match_type_exact_or_conditional | stable_id_available | proposed_canonical_class | proposed_edges | provenance_columns | confidence | implementation_decision |
+8. Add CI to ApplicationService edge.
+   - Use canonical label: RESOLVES_TO_APP
+   - Add visual alias: CI_FOR_APP
+   - source: ConfigurationItem
+   - target: ApplicationService
+   - materialise conditionally when Method3 has app/service evidence from either:
+     SA path: sp_ci / sp_ci_name / sa_ref_app
+     Batch path: cmdb_ci_number / cmdb_app_name
+   - sa_ref_app remains metadata only, not a graph edge by itself.
 
-Implementation decision must be one of:
-- add_now
-- add_conditional_now
-- visual_mapping_only
-- backlog
-- do_not_add
+9. Every materialised edge must include:
+   - source_file
+   - sheet
+   - evidence_class
+   - assertion_status
+   - resolution_status
+   - edge-specific evidence columns from gap_investigation_report.md
 
-Rules:
-- If evidence is not explicit, write "not found".
-- Do not infer silently.
-- Use line numbers or extraction file references where available.
-- At the end, give a short "Recommended minimal LinkML changes" section.
+After changes, rerun:
+python3 model_linkml/check_consistency.py
+.venv/bin/linkml-lint model_linkml/account_graph.yaml
+.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
+
+Return only:
+- classes added
+- edges added/updated
+- files changed
+- checker result
+- lint error count
+- validation result
