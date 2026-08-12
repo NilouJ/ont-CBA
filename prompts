@@ -1,54 +1,60 @@
-Good. This canonical contract table is approved as the basis for implementation.
+Yes — the canonical contract table is the next file to generate.
 
-Now generate the five YAML files from this table.
+Use ONLY these existing extraction artefacts:
+- extraction/method3_extraction_report.md
+- extraction/method3_output_columns.csv
+- extraction/method3_joins.csv
+- extraction/method3_literals.csv
+- extraction/method3_sources.csv
+- extraction/method3_audit_fields.csv
 
-Important constraints:
-1. canonical_account_class and canonical_account_subtype are the graph taxonomy.
-2. method3_account_type and method3_account_subtype must be preserved only as metadata fields.
-3. Unknown/Unknown is not native Method3 output; mark it as derived_post_method3.
-4. Add classification_confidence and classification_evidence fields because some reclassification depends only on AD match/null.
-5. Do not create separate graph node classes for User, Application, Batch, Human-Teradata, Human-Omnia, SU-reclassified, ACOE-service-account, GDW-Batch.
-6. Use one canonical Account class with account_class and account_subtype fields.
-7. Keep source/evidence/provenance fields where available.
-8. Do not generate ETL code yet.
+Do not ask me more context.
+Do not generate LinkML yet.
+Do not generate ETL code yet.
+Do not redesign the model.
 
-Create exactly these files:
+Create this file:
 
-1. modelLinkml/account_graph.yaml
-   - LinkML schema only
-   - classes, slots, enums
-   - canonical Account class
-   - classes: Account, Identity, BusinessUnit, Database, Table, ConfigurationItem, ApplicationService, SandpitRecord if supported
-   - edge classes based on the contract table
-   - include metadata slots:
-     method3_account_type
-     method3_account_subtype
-     classification_reason
-     classification_confidence
-     classification_evidence
-     source_file
-     sheet
-     source_record_id
-     evidence_id
-     resolution_status
+model_linkml/canonical_contract_table.md
 
-2. modelLinkml/source_mapping.yaml
-   - map Method3 final output columns to canonical graph fields
+Purpose:
+This table is the bridge from Method3 output/logic to the graph schema and ETL.
 
-3. modelLinkml/classification_rules.yaml
-   - rules mapping Method3 output classes/subtypes to canonical account_class/account_subtype
-   - include source condition, confidence, and caveat
+The table must contain these columns:
 
-4. modelLinkml/edge_policy.yaml
-   - edge_label, source_vertex, target_vertex, materialise_when, evidence_required
+1. canonical_account_class
+2. canonical_account_subtype
+3. method3_account_type
+4. method3_account_subtype
+5. classification_condition_in_method3
+6. source_files_or_tables_used
+7. join_keys_used
+8. resolution_path
+9. final_output_columns_produced
+10. canonical_graph_nodes_required
+11. canonical_graph_edges_required
+12. provenance_evidence_fields_available
+13. unresolved_conflict_handling
+14. confidence_or_caveat
 
-5. modelLinkml/business_validation_rules.yaml
-   - checks for:
-     allowed account_class/account_subtype
-     Unknown only derived downstream
-     edge endpoints exist
-     materialised edges have evidence
-     low/medium confidence cases go to audit
-     unresolved/conflicting records go to audit
+Canonical taxonomy must be exactly:
 
-Output only the YAML contents.
+- Human / Human
+- NonHuman / ServiceAccount
+- NonHuman / Batch
+- Unknown / Unknown
+
+Important mapping rules:
+- Method3 User / Human-Teradata / Human-Omnia → Human / Human
+- Method3 Application with ACOE_, ISA_, SU service-account evidence → NonHuman / ServiceAccount
+- Method3 Batch / GDW-Batch / batch-prefix accounts → NonHuman / Batch
+- unresolved or ambiguous cases → Unknown / Unknown
+
+Important:
+- Preserve Method3 values only as metadata:
+  - method3_account_type
+  - method3_account_subtype
+- Do not create separate graph classes for User, Application, Batch, Human-Teradata, Human-Omnia, GDW-Batch, ACOE-service-account, or SU-service-account.
+- Use one canonical Account concept with account_class and account_subtype.
+- If something is not explicit in the extraction files, write "not found".
+- At the end, add a short "uncertainties" section.
