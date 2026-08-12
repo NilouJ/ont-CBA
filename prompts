@@ -1,32 +1,60 @@
-Keep business_validation_rules.yaml simple for now.
+Yes — this is now a **good checkpoint**.
 
-Do not redesign the business rules.
-Do not implement deep business validation.
-Do not check freshness, M1/M2 precedence, manager chain, or source authority yet.
+What the screen says:
 
-For now I only want schema/shape validation.
+```text
+Checker: 8/8 PASS
+Lint: 0 errors, 61 warnings
+Validation: no issues
+JSON schema: generated
+```
 
-Update check_consistency.py to perform only these checks:
+Meaning:
 
-C1. account classes are valid enum values
-C2. account subtypes are valid enum values
-C3. every edge source/target class in edge_policy.yaml exists in account_graph.yaml
-C4. every classification rule output uses valid account_class/account_subtype
-C5. every source_mapping output column exists as a slot in account_graph.yaml
-C6. every materialised edge in edge_policy.yaml declares provenance/evidence fields
-C7. no duplicate class names, slot names, or edge labels
-C8. any edge label referenced in business_validation_rules.yaml must exist in edge_policy.yaml
+| Item                   |      Status | Meaning                                                                                   |
+| ---------------------- | ----------: | ----------------------------------------------------------------------------------------- |
+| `check_consistency.py` |  ✅ 8/8 pass | Your schema/policy/source mapping are structurally aligned                                |
+| C8                     |     ✅ added | It now catches stale edge names like `REGISTERED_IN`                                      |
+| LinkML lint            |  ✅ 0 errors | `account_graph.yaml` is valid LinkML                                                      |
+| Warnings               |       ⚠️ 61 | Style only: missing descriptions / naming conventions                                     |
+| LinkML validation      | ✅ no issues | Your example validates against schema                                                     |
+| JSON schema            | ✅ generated | Generated schema is fresh and includes `CommDataIQAsset`, `DirectoryPerson`, `XCOMSystem` |
 
-Do not validate detailed business logic yet.
+Now you can run the converter.
 
-After updating the checker, run:
-python3 model_linkml/check_consistency.py
-.venv/bin/linkml-lint model_linkml/account_graph.yaml
-.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
-.venv/bin/gen-json-schema model_linkml/account_graph.yaml > model_linkml/generated/jsonschema/account_graph.schema.json
+## Do this next
 
-Return only:
-- checker result
-- lint error count
-- validation result
-- JSON schema generated yes/no
+Run:
+
+```bash
+python3 model_linkml/scripts/convert_schema_to_visjs.py
+```
+
+Then run:
+
+```bash
+python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
+```
+
+Then check the output exists:
+
+```bash
+ls -lh model_linkml/generated/visjs_model_graph.json
+```
+
+And quickly inspect it:
+
+```bash
+python3 -m json.tool model_linkml/generated/visjs_model_graph.json | head -80
+```
+
+Expected result should say something like:
+
+```text
+node count: 13
+edge count: 19
+disabled item count: 7
+output: model_linkml/generated/visjs_model_graph.json
+```
+
+After that, copy `visjs_model_graph.json` into your other vis.js repo and load it. Your schema phase is now stable enough.
