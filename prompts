@@ -1,20 +1,13 @@
-Good. Fix only C5.
+Good. C1–C5 pass. Do not change the YAMLs further.
 
-Do not redesign the YAMLs.
+Now give me the exact commands to:
+1. install LinkML if needed
+2. create one valid Account example
+3. create one invalid Account example
+4. run LinkML validation
+5. generate docs
+6. generate Python datamodel
+7. generate JSON schema
 
-For every source_mapping output field that failed C5:
-1. If it is a canonical graph property, add it as a slot in account_graph.yaml.
-2. If it is Method3/source metadata, add it as a slot in account_graph.yaml and mark it as method3_metadata or source_metadata in the description.
-3. If it should not become a graph property, mark it explicitly in source_mapping.yaml as method3_metadata: true or ignore_for_graph: true.
-
-Do not change account classes.
-Do not change account subtypes.
-Do not change edge classes.
-Do not change classification rules.
-
-After the minimal fix, rerun:
-python3 model_linkml/check_consistency.py
-
-Return only:
-- the list of fields fixed
-- whether all checks pass
+Use the current file path:
+model_linkml/account_graph.yaml
