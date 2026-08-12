@@ -1,115 +1,62 @@
-Good. Apply only the evidence-supported schema changes from gap_investigation_report.md.
+Good. The evidence-supported LinkML update passes:
+- checker 7/7
+- lint 0 errors
+- validation no issues
 
-Do not redesign the model.
-Do not change AccountClassEnum.
-Do not change AccountSubtypeEnum.
-Do not create HumanAccount, ServiceAccount, or BatchAccount as physical classes.
-They remain visual aliases of Account.
+Before ETL/adapter, I want to visualise the final model.
 
-Update only:
-1. model_linkml/account_graph.yaml
-2. model_linkml/policy/edge_policy.yaml
-3. model_linkml/source_mapping.yaml
-4. model_linkml/references/visual_schema_mapping.md if needed
+Do not change LinkML.
+Do not change edge_policy.
+Do not change source_mapping.
+Do not generate ETL code.
 
-Apply these decisions:
+Task:
+Align the existing manual visual schema with the final source-of-truth model.
 
-1. Add CommDataIQAsset as a canonical class.
-   - It is the bridge to CommDataIQ/DuckDB catalogue asset layer.
-   - No cdiq_id exists, so use derived asset identity from uppercase database + table.
-   - Include slots:
-     asset_id
-     asset_id_source
-     database
-     table
-     db_table
-     cdiq_status
-     cdiq_layer
-     cdiq_data_platform
-     source_file
-     sheet
+Inputs:
+- model_linkml/account_graph.yaml
+- model_linkml/policy/edge_policy.yaml
+- model_linkml/source_mapping.yaml
+- model_linkml/references/manual_visual_schema.json
+- model_linkml/references/visual_schema_mapping.md
+- model_linkml/references/gap_investigation_report.md
 
-2. Add CATALOGUED_AS edge:
-   - source: Table
-   - target: CommDataIQAsset
-   - materialise only when Method3 cdiq evidence exists.
-   - join evidence: uppercase database + table.
-   - If only table evidence exists or cdiq_status is "not found", do not create accepted edge; mark unresolved/audit.
-   - provenance_required: true.
+Output first:
+model_linkml/references/final_visual_schema_plan.md
 
-3. Add DirectoryPerson as canonical class.
-   - Purpose: real person/owner from AD/Workday/SA contact/CI owner.
-   - Include slots:
-     person_id
-     display_name
-     email
-     ad_id
-     ad_upn
-     ad_display_name
-     sa_contactname
-     sa_contactemail
-     cmdb_owned_by
-     cmdb_managed_by
-     wd_cmdb_owned_by_email
-     wd_team_2
-     wd_team_3
-     wd_team_4
-     source_file
-     sheet
+The plan must show:
 
-4. Update owner/person edges to use DirectoryPerson where supported:
-   - HAS_OWNER: Account -> DirectoryPerson
-   - OWNED_BY: ConfigurationItem -> DirectoryPerson
-   - BELONGS_TO: DirectoryPerson -> BusinessUnit
+1. Final visual node types
+Columns:
+- visual_node_type
+- canonical_class
+- visual_alias_yes_no
+- filter_condition
+- reason
 
-5. Do NOT add unsupported old visual edges:
-   - HumanAccount OWNED_BY DirectoryPerson
-   - REPORTS_TO
-   - AADIdentity RESOLVES_TO DirectoryPerson
-   unless Method3 evidence explicitly supports them. Mark them visual/backlog only.
+2. Final visual edge types
+Columns:
+- visual_edge_label
+- canonical_edge_label
+- source_visual_node
+- target_visual_node
+- source_canonical_class
+- target_canonical_class
+- materialisation_status
+- provenance_required_yes_no
+- reason
 
-6. Add XCOMSystem as canonical class.
-   - Purpose: batch remote scheduling/execution system.
-   - It is not ApplicationService.
-   - Include slots:
-     xcom_system_id
-     xcom_remote
-     source_file
-     sheet
+3. Disabled/backlog visual items
+Columns:
+- old_visual_item
+- reason_disabled
+- backlog_or_removed
 
-7. Add HAS_XCOM_TARGET edge:
-   - source: Account
-   - target: XCOMSystem
-   - materialise only for Batch accounts when xcom_remote exists.
-   - provenance_required: true.
-
-8. Add CI to ApplicationService edge.
-   - Use canonical label: RESOLVES_TO_APP
-   - Add visual alias: CI_FOR_APP
-   - source: ConfigurationItem
-   - target: ApplicationService
-   - materialise conditionally when Method3 has app/service evidence from either:
-     SA path: sp_ci / sp_ci_name / sa_ref_app
-     Batch path: cmdb_ci_number / cmdb_app_name
-   - sa_ref_app remains metadata only, not a graph edge by itself.
-
-9. Every materialised edge must include:
-   - source_file
-   - sheet
-   - evidence_class
-   - assertion_status
-   - resolution_status
-   - edge-specific evidence columns from gap_investigation_report.md
-
-After changes, rerun:
-python3 model_linkml/check_consistency.py
-.venv/bin/linkml-lint model_linkml/account_graph.yaml
-.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
-
-Return only:
-- classes added
-- edges added/updated
-- files changed
-- checker result
-- lint error count
-- validation result
+Rules:
+- HumanAccount, ServiceAccount, BatchAccount are visual aliases of Account.
+- CommDataIQAsset, DirectoryPerson, ConfigurationItem, ApplicationService, XCOMSystem are real physical canonical classes.
+- CATALOGUED_AS means Table -> CommDataIQAsset.
+- HAS_XCOM_TARGET means Account -> XCOMSystem.
+- RESOLVES_TO_APP means ConfigurationItem -> ApplicationService.
+- Do not invent unsupported edges.
+- Do not modify files yet.
