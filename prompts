@@ -1,6 +1,4 @@
-Yes — this is now a **good checkpoint**.
 
-What the screen says:
 
 ```text
 Checker: 8/8 PASS
@@ -20,9 +18,7 @@ Meaning:
 | LinkML validation      | ✅ no issues | Your example validates against schema                                                     |
 | JSON schema            | ✅ generated | Generated schema is fresh and includes `CommDataIQAsset`, `DirectoryPerson`, `XCOMSystem` |
 
-Now you can run the converter.
 
-## Do this next
 
 Run:
 
@@ -48,7 +44,7 @@ And quickly inspect it:
 python3 -m json.tool model_linkml/generated/visjs_model_graph.json | head -80
 ```
 
-Expected result should say something like:
+
 
 ```text
 node count: 13
