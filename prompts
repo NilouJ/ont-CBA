@@ -1,21 +1,49 @@
-Using only the generated extraction files and Method3 code where needed, create the Method3 implementation contract table.
+Good. Before generating YAML, revise the Method3 contract table into a canonical graph contract.
+
+Important:
+Method3 raw account_type values are not the final graph taxonomy.
+
+Map Method3 raw output classes into the approved canonical taxonomy:
+
+1. Method3 User / Human-Teradata / Human-Omnia
+   → account_class = Human
+   → account_subtype = Human
+
+2. Method3 Application with ACOE_, ISA_, SU service account evidence
+   → account_class = NonHuman
+   → account_subtype = ServiceAccount
+
+3. Method3 Batch / GDW-Batch / batch-prefix accounts
+   → account_class = NonHuman
+   → account_subtype = Batch
+
+4. Anything unresolved or ambiguous
+   → account_class = Unknown
+   → account_subtype = Unknown
+
+Do not lose the original Method3 values. Keep them as metadata fields:
+- method3_account_type
+- method3_account_subtype
+- classification_reason
+- classification_source
+
+Revise the table with these columns:
+
+1. canonical_account_class
+2. canonical_account_subtype
+3. method3_account_type
+4. method3_account_subtype
+5. classification condition in Method3
+6. source files/tables used
+7. join keys used
+8. resolution path
+9. final output columns produced
+10. canonical graph nodes required
+11. canonical graph edges required
+12. provenance/evidence fields available
+13. unresolved/conflict handling
+14. confidence / caveat
 
 Do not generate YAML yet.
 Do not generate ETL yet.
-Do not redesign.
-
-Return one table with:
-
-1. account_class
-2. account_subtype
-3. classification condition in Method3
-4. source files/tables used
-5. join keys used
-6. resolution path
-7. final output columns produced
-8. canonical graph nodes required
-9. canonical graph edges required
-10. provenance/evidence fields available
-11. unresolved/conflict handling
-
-Use only evidence from the extractor. If something is not explicit, write “not found”.
+Return only the revised canonical contract table.
