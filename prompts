@@ -1,13 +1,20 @@
-Now review model_linkml/canonical_contract_table.md for consistency.
+Yes, apply those fixes.
 
-Check:
-1. canonical account classes are only Human, NonHuman, Unknown
-2. canonical account subtypes are only Human, ServiceAccount, Batch, Unknown
-3. Method3 raw types are preserved only as metadata
-4. no duplicate graph node classes are introduced
-5. every row has source files, join keys, output columns, graph nodes/edges, and evidence fields or says "not found"
-6. Unknown/Unknown is clearly marked as downstream-derived, not native Method3 output
+Rules:
+1. For source_files_or_tables_used, join_keys_used, and final_output_columns_produced:
+   - replace vague wording with explicit values from the extraction files where available
+   - if the extraction does not explicitly support the value, write "not found"
+   - do not infer silently
 
-Return only:
-- issues found
-- exact fixes applied
+2. For Unknown / Unknown rows:
+   - mark them clearly as derived_post_method3 = true
+   - explain that Unknown is not a native Method3 output class
+   - keep unresolved/ambiguous reason in unresolved_conflict_handling
+
+3. Do not redesign the taxonomy.
+4. Do not generate LinkML yet.
+5. Do not generate ETL code yet.
+
+After applying the fixes, return:
+- the updated canonical_contract_table.md
+- a short list of exact changes made
