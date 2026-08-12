@@ -1,31 +1,119 @@
-The final_visual_schema_plan.md is approved.
+Write a deterministic converter script to create a vis.js / vis-network model graph JSON.
 
-Now generate the aligned visual schema JSON.
+Important:
+Use BOTH the LinkML YAML and the generated JSON schema.
 
-Input:
-- model_linkml/references/manual_visual_schema.json
-- model_linkml/references/final_visual_schema_plan.md
-- model_linkml/account_graph.yaml
-- model_linkml/policy/edge_policy.yaml
+Do not change any model files.
+Do not change LinkML.
+Do not change edge_policy.
+Do not generate ETL code.
+
+Create:
+
+model_linkml/scripts/convert_schema_to_visjs.py
+
+Inputs:
+1. model_linkml/account_graph.yaml
+   - canonical human-authored source of truth
+   - classes, slots, enums, descriptions, inheritance
+
+2. model_linkml/generated/jsonschema/account_graph.schema.json
+   - generated LinkML JSON Schema artefact
+   - use it to cross-check compiled classes/properties
+   - fail if major classes in YAML are missing from JSON schema
+
+3. model_linkml/policy/edge_policy.yaml
+   - canonical edge/materialisation/provenance policy
+
+4. model_linkml/references/final_visual_schema_plan.md
+   - visual alias and display mapping
+
+5. model_linkml/references/manual_visual_schema.json
+   - legacy visual layout/style/reference only
 
 Output:
-model_linkml/generated/visual_schema_v2.json
+model_linkml/generated/visjs_model_graph.json
+
+Required output shape:
+
+{
+  "nodes": [
+    {
+      "id": "HumanAccount",
+      "label": "HumanAccount",
+      "group": "visual_account_alias",
+      "title": "...",
+      "canonical_class": "Account",
+      "is_visual_alias": true,
+      "filter_condition": "canonical_account_subtype == Human"
+    }
+  ],
+  "edges": [
+    {
+      "id": "HumanAccount__ACCESSED__Table",
+      "from": "HumanAccount",
+      "to": "Table",
+      "label": "ACCESSED",
+      "arrows": "to",
+      "title": "...",
+      "canonical_edge_label": "ACCESSED",
+      "materialisation_status": "accepted",
+      "provenance_required": true
+    }
+  ],
+  "groups": {},
+  "metadata": {
+    "source_files": [],
+    "yaml_jsonschema_consistency": {},
+    "disabled_items": [],
+    "purpose": "vis.js model visualisation only"
+  }
+}
 
 Rules:
-- Do not overwrite manual_visual_schema.json.
-- Do not change LinkML.
-- Do not change edge_policy.
-- Preserve useful layout, swimlane, legend, node positioning, and colours from the manual visual schema where possible.
-- HumanAccount, ServiceAccount, and BatchAccount remain visual aliases of Account.
-- CommDataIQAsset, DirectoryPerson, ConfigurationItem, ApplicationService, XCOMSystem, Table, Database, and BusinessUnit are real visual/canonical nodes.
-- CATALOGUED_AS must show Table -> CommDataIQAsset.
-- RESOLVES_TO_APP must show ConfigurationItem -> ApplicationService.
-- HAS_XCOM_TARGET must show BatchAccount -> XCOMSystem.
-- Unsupported/backlog old visual edges must be marked disabled/backlog, not silently deleted.
+1. Parse account_graph.yaml as the semantic source of truth.
+2. Parse account_graph.schema.json as the generated validation artefact.
+3. Cross-check that important canonical classes exist in both:
+   - Account
+   - DirectoryPerson
+   - BusinessUnit
+   - Database
+   - Table
+   - CommDataIQAsset
+   - ConfigurationItem
+   - ApplicationService
+   - XCOMSystem
+   - SandpitRecord if present
+4. If a class exists in YAML but not JSON schema, fail loudly.
+5. If JSON schema contains generated helper structures that are not visual nodes, ignore them.
+6. Parse edge_policy.yaml for edge labels, source/target classes, materialisation status, provenance_required.
+7. Use final_visual_schema_plan.md for visual aliases:
+   - HumanAccount = Account where canonical_account_subtype == Human
+   - ServiceAccount = Account where canonical_account_subtype == ServiceAccount
+   - BatchAccount = Account where canonical_account_subtype == Batch
+8. Use manual_visual_schema.json only for layout/style hints and old visual IDs.
+9. Do not include disabled/backlog edges in active edges.
+10. Put disabled/backlog edges in metadata.disabled_items.
+11. Validate generated vis.js JSON:
+   - no duplicate node IDs
+   - no duplicate edge IDs
+   - every edge.from exists as node.id
+   - every edge.to exists as node.id
+   - every active edge has label/from/to/arrows
+12. Add:
+   --validate-only
+   --output <path>
+   --strict
+13. Use only standard Python libraries plus PyYAML.
+14. Print:
+   - YAML class count
+   - JSON schema class/property count
+   - output node count
+   - output edge count
+   - disabled item count
+   - output path
 
-Return only:
-1. output file path
-2. node count
-3. edge count
-4. disabled/backlog item count
-5. any assumptions made
+Do not hardcode random layout coordinates.
+Do not use React.
+Do not use networkx.
+Do not use Graph Explorer-specific schema.
