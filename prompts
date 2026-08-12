@@ -1,37 +1,70 @@
-Fix only the LinkML built-in type import issue.
+I have copied the existing manual Graph Explorer visual schema JSON into:
 
-Do not change the ontology.
-Do not change account classes.
-Do not change account subtypes.
-Do not rename enum values.
-Do not change source_mapping, edge_policy, classification_rules, or validation_rules.
+model_linkml/reference/manual_visual_schema.json
 
-In model_linkml/account_graph.yaml:
-1. Add the required LinkML import for built-in types:
-   imports:
-     - linkml:types
+This manual JSON is a frontend/visual schema reference only.
 
-2. Ensure the schema has normal LinkML header fields if missing:
-   id:
-   name:
-   prefixes:
-   default_prefix:
-   default_range:
+Do not rewrite LinkML.
+Do not redesign the model.
+Do not generate ETL code.
+Do not replace the canonical schema with the manual JSON.
 
-3. Keep all current ranges such as string, integer, and boolean.
+Compare:
 
-After the minimal fix, rerun:
+1. model_linkml/reference/manual_visual_schema.json
+2. model_linkml/account_graph.yaml
+3. model_linkml/edge_policy.yaml
+4. model_linkml/source_mapping.yaml
+5. model_linkml/classification_rules.yaml
 
-.venv/bin/linkml-lint model_linkml/account_graph.yaml
+Goal:
+Create a mapping between the old/manual visual graph schema and the new canonical LinkML model.
 
-Then run:
+Important design rule:
+HumanAccount, ServiceAccount, and BatchAccount in the visual schema are visual aliases/views of canonical Account, not separate physical canonical node classes.
 
-.venv/bin/linkml-validate \
-  --schema model_linkml/account_graph.yaml \
-  --target-class Account \
-  model_linkml/examples/valid/account.valid.yaml
+Use this mapping principle:
+- HumanAccount = Account where canonical_account_subtype = Human
+- ServiceAccount = Account where canonical_account_subtype = ServiceAccount
+- BatchAccount = Account where canonical_account_subtype = Batch
 
-Return only:
-- exact header/import changes made
-- whether lint has any remaining errors
-- whether validation passes
+Return exactly one file:
+
+model_linkml/reference/visual_schema_mapping.md
+
+The file must include these tables:
+
+1. Visual node type → canonical LinkML class
+Columns:
+- visual_node_type
+- canonical_class
+- filter_condition_if_alias
+- keep_as_physical_class_yes_no
+- notes
+
+2. Visual edge type → canonical edge policy
+Columns:
+- visual_edge_label
+- canonical_edge_label
+- source_visual_node
+- target_visual_node
+- source_canonical_class
+- target_canonical_class
+- exists_in_edge_policy_yes_no
+- notes
+
+3. Missing or mismatched items
+Columns:
+- item
+- problem
+- recommended_fix
+- change_linkml_yes_no
+- change_visual_schema_yes_no
+
+Rules:
+- Do not change any YAML files yet.
+- Do not create new canonical account classes.
+- If a visual node/edge is only a display alias, mark it as visual_alias.
+- If something exists in manual JSON but not in LinkML/edge_policy, list it as mismatch.
+- If something exists in LinkML/edge_policy but not in manual JSON, list it as missing_from_visual_schema.
+- Return only the created mapping file content and a short summary.
