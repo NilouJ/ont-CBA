@@ -1,56 +1,33 @@
+Pause. I think we may have lost the Workday/BU resolution path.
 
+Do not change files yet.
 
-```text
-Checker: 8/8 PASS
-Lint: 0 errors, 61 warnings
-Validation: no issues
-JSON schema: generated
-```
+Check the final account_graph.yaml, edge_policy.yaml, final_visual_schema_plan.md, and visjs output if generated.
 
-Meaning:
+Verify whether the model has an explicit Workday/person-to-BU path:
 
-| Item                   |      Status | Meaning                                                                                   |
-| ---------------------- | ----------: | ----------------------------------------------------------------------------------------- |
-| `check_consistency.py` |  ✅ 8/8 pass | Your schema/policy/source mapping are structurally aligned                                |
-| C8                     |     ✅ added | It now catches stale edge names like `REGISTERED_IN`                                      |
-| LinkML lint            |  ✅ 0 errors | `account_graph.yaml` is valid LinkML                                                      |
-| Warnings               |       ⚠️ 61 | Style only: missing descriptions / naming conventions                                     |
-| LinkML validation      | ✅ no issues | Your example validates against schema                                                     |
-| JSON schema            | ✅ generated | Generated schema is fresh and includes `CommDataIQAsset`, `DirectoryPerson`, `XCOMSystem` |
+DirectoryPerson -> BELONGS_TO -> BusinessUnit
 
+Also verify whether the model has an explicit identity/person resolution path:
 
+Account -> HAS_IDENTITY -> Identity
+Identity -> RESOLVES_TO_PERSON -> DirectoryPerson
 
-Run:
+or an equivalent supported path.
 
-```bash
-python3 model_linkml/scripts/convert_schema_to_visjs.py
-```
+Return only this table:
 
-Then run:
+| path | exists_yes_no | edge_label | source_class | target_class | supported_by_method3_yes_no | evidence_columns | action_needed |
 
-```bash
-python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
-```
+Check these paths:
+1. Account -> HAS_IDENTITY -> Identity
+2. Identity -> RESOLVES_TO_PERSON -> DirectoryPerson
+3. DirectoryPerson -> BELONGS_TO -> BusinessUnit
+4. Account -> HAS_OWNER -> DirectoryPerson
+5. DirectoryPerson/owner -> BusinessUnit through Workday fields wd_team_2/wd_team_3/wd_team_4
 
-Then check the output exists:
-
-```bash
-ls -lh model_linkml/generated/visjs_model_graph.json
-```
-
-And quickly inspect it:
-
-```bash
-python3 -m json.tool model_linkml/generated/visjs_model_graph.json | head -80
-```
-
-
-
-```text
-node count: 13
-edge count: 19
-disabled item count: 7
-output: model_linkml/generated/visjs_model_graph.json
-```
-
-After that, copy `visjs_model_graph.json` into your other vis.js repo and load it. Your schema phase is now stable enough.
+Important:
+- Do not invent unsupported AAD-to-person edges.
+- If Method3 has AD/Workday evidence to connect Identity to DirectoryPerson, mark RESOLVES_TO_PERSON as add_now.
+- If Method3 only has person/owner fields directly on the account row, keep Account -> DirectoryPerson and DirectoryPerson -> BusinessUnit.
+- The BU edge should be DirectoryPerson -> BusinessUnit, not BusinessUnit -> Identity.
