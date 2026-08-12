@@ -1,25 +1,28 @@
-You have access to the repo and Method3.
+The extraction worked. Now improve it into a deterministic Method3 contract extractor.
 
-Before creating any ontology or LinkML, write a deterministic Python extractor script that inspects Method3 and its output files.
-
-The script should extract:
-1. Method3 Python files/functions/classes
-2. input files/tables referenced
-3. output files generated
-4. final Excel/CSV/parquet output columns
-5. pandas/polars merge/join operations and join keys
-6. literal account classes/subtypes/status values used in the code
-7. source/evidence/provenance fields if present
-8. unresolved/conflict/audit output columns if present
-
-The script should write:
-- method3_extraction_report.md
-- method3_output_columns.csv
-- method3_joins.csv
-- method3_literals.csv
-
-Do not redesign the model.
+Do not infer the ontology yet.
 Do not generate LinkML yet.
 Do not generate ETL yet.
 
-After writing the script, explain how to run it from the repo root.
+Update extract_m3.py so it deterministically extracts:
+
+1. All Method3 input files/tables referenced in code.
+2. All Method3 output files generated.
+3. All final output columns from Excel/CSV/parquet outputs.
+4. All pandas/polars merge/join operations, including left/right dataframe names and join keys where possible.
+5. All literal account_class, account_subtype, account_type, status, resolution_status, evidence, source, CI, owner, BU, application values used in the code.
+6. All prefix/classification patterns such as SU, ACOE, ISA, PU, BU, TU, OU, I<digit>.
+7. All unresolved/conflict/audit outputs and columns.
+8. All source_record/evidence/provenance fields.
+
+Write these files:
+- extraction/method3_extraction_report.md
+- extraction/method3_output_columns.csv
+- extraction/method3_joins.csv
+- extraction/method3_literals.csv
+- extraction/method3_sources.csv
+- extraction/method3_audit_fields.csv
+
+Each CSV must have enough columns to trace the result back to file name and line number where possible.
+
+After that, run the script and show me the generated file summary.
