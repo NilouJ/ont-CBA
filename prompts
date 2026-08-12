@@ -1,49 +1,54 @@
-Good. Before generating YAML, revise the Method3 contract table into a canonical graph contract.
+Good. This canonical contract table is approved as the basis for implementation.
 
-Important:
-Method3 raw account_type values are not the final graph taxonomy.
+Now generate the five YAML files from this table.
 
-Map Method3 raw output classes into the approved canonical taxonomy:
+Important constraints:
+1. canonical_account_class and canonical_account_subtype are the graph taxonomy.
+2. method3_account_type and method3_account_subtype must be preserved only as metadata fields.
+3. Unknown/Unknown is not native Method3 output; mark it as derived_post_method3.
+4. Add classification_confidence and classification_evidence fields because some reclassification depends only on AD match/null.
+5. Do not create separate graph node classes for User, Application, Batch, Human-Teradata, Human-Omnia, SU-reclassified, ACOE-service-account, GDW-Batch.
+6. Use one canonical Account class with account_class and account_subtype fields.
+7. Keep source/evidence/provenance fields where available.
+8. Do not generate ETL code yet.
 
-1. Method3 User / Human-Teradata / Human-Omnia
-   → account_class = Human
-   → account_subtype = Human
+Create exactly these files:
 
-2. Method3 Application with ACOE_, ISA_, SU service account evidence
-   → account_class = NonHuman
-   → account_subtype = ServiceAccount
+1. modelLinkml/account_graph.yaml
+   - LinkML schema only
+   - classes, slots, enums
+   - canonical Account class
+   - classes: Account, Identity, BusinessUnit, Database, Table, ConfigurationItem, ApplicationService, SandpitRecord if supported
+   - edge classes based on the contract table
+   - include metadata slots:
+     method3_account_type
+     method3_account_subtype
+     classification_reason
+     classification_confidence
+     classification_evidence
+     source_file
+     sheet
+     source_record_id
+     evidence_id
+     resolution_status
 
-3. Method3 Batch / GDW-Batch / batch-prefix accounts
-   → account_class = NonHuman
-   → account_subtype = Batch
+2. modelLinkml/source_mapping.yaml
+   - map Method3 final output columns to canonical graph fields
 
-4. Anything unresolved or ambiguous
-   → account_class = Unknown
-   → account_subtype = Unknown
+3. modelLinkml/classification_rules.yaml
+   - rules mapping Method3 output classes/subtypes to canonical account_class/account_subtype
+   - include source condition, confidence, and caveat
 
-Do not lose the original Method3 values. Keep them as metadata fields:
-- method3_account_type
-- method3_account_subtype
-- classification_reason
-- classification_source
+4. modelLinkml/edge_policy.yaml
+   - edge_label, source_vertex, target_vertex, materialise_when, evidence_required
 
-Revise the table with these columns:
+5. modelLinkml/business_validation_rules.yaml
+   - checks for:
+     allowed account_class/account_subtype
+     Unknown only derived downstream
+     edge endpoints exist
+     materialised edges have evidence
+     low/medium confidence cases go to audit
+     unresolved/conflicting records go to audit
 
-1. canonical_account_class
-2. canonical_account_subtype
-3. method3_account_type
-4. method3_account_subtype
-5. classification condition in Method3
-6. source files/tables used
-7. join keys used
-8. resolution path
-9. final output columns produced
-10. canonical graph nodes required
-11. canonical graph edges required
-12. provenance/evidence fields available
-13. unresolved/conflict handling
-14. confidence / caveat
-
-Do not generate YAML yet.
-Do not generate ETL yet.
-Return only the revised canonical contract table.
+Output only the YAML contents.
