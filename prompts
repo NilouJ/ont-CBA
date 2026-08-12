@@ -1,13 +1,20 @@
-Now write a small Python consistency checker for these five YAML files.
-
-It must check:
-1. account classes are only Human, NonHuman, Unknown
-2. account subtypes are only Human, ServiceAccount, Batch, Unknown
-3. all edge source/target classes exist in account_graph.yaml
-4. all classification rule outputs use valid account_class/account_subtype values
-5. all source_mapping fields exist as slots in account_graph.yaml or are marked method3_metadata
-6. every materialised edge requires evidence/provenance fields
-7. Unknown/Unknown rows have derived_post_method3 = true
+Good. Fix only C5.
 
 Do not redesign the YAMLs.
-Return the script and how to run it.
+
+For every source_mapping output field that failed C5:
+1. If it is a canonical graph property, add it as a slot in account_graph.yaml.
+2. If it is Method3/source metadata, add it as a slot in account_graph.yaml and mark it as method3_metadata or source_metadata in the description.
+3. If it should not become a graph property, mark it explicitly in source_mapping.yaml as method3_metadata: true or ignore_for_graph: true.
+
+Do not change account classes.
+Do not change account subtypes.
+Do not change edge classes.
+Do not change classification rules.
+
+After the minimal fix, rerun:
+python3 model_linkml/check_consistency.py
+
+Return only:
+- the list of fields fixed
+- whether all checks pass
