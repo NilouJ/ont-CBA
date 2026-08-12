@@ -1,28 +1,21 @@
-The extraction worked. Now improve it into a deterministic Method3 contract extractor.
+Using only the generated extraction files and Method3 code where needed, create the Method3 implementation contract table.
 
-Do not infer the ontology yet.
-Do not generate LinkML yet.
+Do not generate YAML yet.
 Do not generate ETL yet.
+Do not redesign.
 
-Update extract_m3.py so it deterministically extracts:
+Return one table with:
 
-1. All Method3 input files/tables referenced in code.
-2. All Method3 output files generated.
-3. All final output columns from Excel/CSV/parquet outputs.
-4. All pandas/polars merge/join operations, including left/right dataframe names and join keys where possible.
-5. All literal account_class, account_subtype, account_type, status, resolution_status, evidence, source, CI, owner, BU, application values used in the code.
-6. All prefix/classification patterns such as SU, ACOE, ISA, PU, BU, TU, OU, I<digit>.
-7. All unresolved/conflict/audit outputs and columns.
-8. All source_record/evidence/provenance fields.
+1. account_class
+2. account_subtype
+3. classification condition in Method3
+4. source files/tables used
+5. join keys used
+6. resolution path
+7. final output columns produced
+8. canonical graph nodes required
+9. canonical graph edges required
+10. provenance/evidence fields available
+11. unresolved/conflict handling
 
-Write these files:
-- extraction/method3_extraction_report.md
-- extraction/method3_output_columns.csv
-- extraction/method3_joins.csv
-- extraction/method3_literals.csv
-- extraction/method3_sources.csv
-- extraction/method3_audit_fields.csv
-
-Each CSV must have enough columns to trace the result back to file name and line number where possible.
-
-After that, run the script and show me the generated file summary.
+Use only evidence from the extractor. If something is not explicit, write “not found”.
