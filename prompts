@@ -1,69 +1,13 @@
-Good. Now use the corrected canonical_contract_table.md as the only source of truth.
+Now write a small Python consistency checker for these five YAML files.
 
-Generate exactly these five files:
+It must check:
+1. account classes are only Human, NonHuman, Unknown
+2. account subtypes are only Human, ServiceAccount, Batch, Unknown
+3. all edge source/target classes exist in account_graph.yaml
+4. all classification rule outputs use valid account_class/account_subtype values
+5. all source_mapping fields exist as slots in account_graph.yaml or are marked method3_metadata
+6. every materialised edge requires evidence/provenance fields
+7. Unknown/Unknown rows have derived_post_method3 = true
 
-1. model_linkml/account_graph.yaml
-2. model_linkml/source_mapping.yaml
-3. model_linkml/classification_rules.yaml
-4. model_linkml/edge_policy.yaml
-5. model_linkml/business_validation_rules.yaml
-
-Rules:
-- Do not redesign.
-- Do not add new account classes.
-- Use canonical_account_class and canonical_account_subtype as the graph taxonomy.
-- Preserve method3_account_type and method3_account_subtype only as metadata fields.
-- Preserve derived_post_method3 for Unknown/Unknown rows.
-- Use explicit source files, join keys, and final output columns from the corrected contract table.
-- If a value is not found, keep it as "not found".
-- Do not generate ETL code yet.
-
-Required taxonomy:
-AccountClassEnum:
-- Human
-- NonHuman
-- Unknown
-
-AccountSubtypeEnum:
-- Human
-- ServiceAccount
-- Batch
-- Unknown
-
-Required core graph classes:
-- Account
-- Identity
-- BusinessUnit
-- Database
-- Table
-- ConfigurationItem
-- ApplicationService
-- SandpitRecord if supported by the contract table
-
-Required edge types:
-- ACCESSED
-- HAS_IDENTITY
-- BELONGS_TO
-- IN_DATABASE
-- IS_SANDPIT
-- REGISTERED_IN
-- HAS_OWNER
-- OWNED_BY
-- ASSIGNED_CI
-- HAS_XCOM_TARGET if supported by the contract table
-
-Required metadata/provenance fields:
-- method3_account_type
-- method3_account_subtype
-- derived_post_method3
-- classification_reason
-- classification_confidence
-- source_file
-- sheet
-- source_record_id
-- evidence_id
-- evidence_class
-- assertion_status
-- resolution_status
-
-Output only the five YAML file contents.
+Do not redesign the YAMLs.
+Return the script and how to run it.
