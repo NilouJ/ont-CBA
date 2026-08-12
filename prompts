@@ -1,13 +1,97 @@
-Good. C1–C5 pass. Do not change the YAMLs further.
+Fix C6 properly.
 
-Now give me the exact commands to:
-1. install LinkML if needed
-2. create one valid Account example
-3. create one invalid Account example
-4. run LinkML validation
-5. generate docs
-6. generate Python datamodel
-7. generate JSON schema
+Do not change account classes.
+Do not change account subtypes.
+Do not change classification rules.
+Do not change source_mapping except if absolutely required.
+Do not redesign the YAMLs.
 
-Use the current file path:
-model_linkml/account_graph.yaml
+Only update edge_policy.yaml for these four failing edges:
+- IN_DATABASE
+- HAS_OWNER
+- OWNED_BY
+- ASSIGNED_CI
+
+For each edge, add explicit provenance evidence based only on canonical_contract_table.md and Method3 extraction files.
+
+For each edge add:
+
+provenance_required: true
+provenance_columns:
+  - source_file
+  - sheet
+  - account_type
+  - cdiq_status
+
+Also add edge-specific evidence columns:
+
+1. IN_DATABASE
+   join_key:
+     - database
+     - table
+   evidence_columns:
+     - database
+     - table
+     - db_table
+     - source_file
+     - sheet
+
+2. HAS_OWNER
+   join_key:
+     - user_id
+     - sa_contactemail
+     - ad_upn
+   evidence_columns:
+     - sa_contactname
+     - sa_contactemail
+     - ad_display_name
+     - ad_upn
+     - wd_manager_email_fallback
+     - source_file
+     - sheet
+
+3. OWNED_BY
+   join_key:
+     - sp_ci
+     - cmdb_ci_number
+     - cmdb_owned_by
+     - cmdb_managed_by
+   evidence_columns:
+     - sp_ci
+     - sp_ci_name
+     - cmdb_ci_number
+     - cmdb_owned_by
+     - cmdb_managed_by
+     - wd_cmdb_owned_by_email
+     - source_file
+     - sheet
+
+4. ASSIGNED_CI
+   join_key:
+     - sp_ci
+     - cmdb_ci_number
+     - user_id
+   evidence_columns:
+     - sp_ci
+     - sp_ci_name
+     - cmdb_ci_number
+     - cmdb_ci_name
+     - sa_ref_ci
+     - sa_ref_cm
+     - source_file
+     - sheet
+
+If any listed column is not in account_graph.yaml slots, add it as a source_metadata slot with description saying it is Method3 provenance/evidence metadata.
+
+If any join key is not explicitly supported by the contract table, write:
+join_key_status: partial
+join_key_caveat: "Derived from Method3 extraction; requires runtime validation."
+
+After updating edge_policy.yaml, rerun:
+
+python3 model_linkml/check_consistency.py
+
+Return only:
+- exact changes made to the four edge policies
+- any metadata slots added
+- final checker result
