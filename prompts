@@ -1,56 +1,35 @@
-This run_all_checks.sh is too complicated.
+Pause and follow this exactly.
 
-Do not patch Python code in memory.
-Do not use heredoc exec.
-Do not rewrite REPO_ROOT dynamically.
-Do not use fake layout logic.
-
-Simplify the package instead:
-
-1. Keep validate_schema_freeze.py as-is because it already reads from consumption_inventory_graph.
-2. For check_consistency.py and convert_schema_to_visjs.py, either:
-   - update the copied versions inside consumption_inventory_graph/05_validators/ so they use paths relative to consumption_inventory_graph, OR
-   - make run_all_checks.sh call them with explicit package paths if they already support that.
-
+Do not redesign anything.
+Do not change schema logic.
+Do not change edge logic.
+Do not modify the accepted final schema design.
 Do not modify original model_linkml files.
-Only modify copied files inside consumption_inventory_graph/.
 
-Create a simple run_all_checks.sh:
+We are only improving the clean package:
 
-#!/usr/bin/env bash
-set -euo pipefail
+consumption_inventory_graph/
 
-mkdir -p 06_reports
-LOG_FILE="06_reports/schema_freeze_check_run.log"
+Goal:
+Make the package tell this simple story:
 
-{
-  echo "=== Consumption Inventory Graph validation ==="
-  echo ""
+1. Method3 extractor package is the source of truth.
+2. Truth tables are extracted deterministically from Method3 evidence.
+3. Candidate nodes/edges/conditions are derived deterministically from those truth tables.
+4. The final graph schema is a curated contract refined from the existing base schema using those evidence-backed candidates.
+5. Validators/checkers deterministically prove the final schema is internally consistent.
 
-  echo "1. Running schema freeze validation..."
-  python3 05_validators/validate_schema_freeze.py
+Important:
+- candidate_nodes.csv, candidate_edges.csv, and candidate_conditions.csv are evidence outputs only.
+- They must NOT overwrite or regenerate the final schema.
+- The final schema remains:
+  schema/account_graph.yaml
+  schema/edge_policy.yaml
+  schema/source_mapping.yaml
+  schema/classification_rules.yaml
+  schema/business_validation_rules.yaml
+  schema/account_graph.schema.json
 
-  echo ""
-  echo "2. Running consistency checker..."
-  python3 05_validators/check_consistency.py
+Only add/update files inside consumption_inventory_graph/.
 
-  echo ""
-  echo "3. Running visual/model validation..."
-  python3 05_validators/convert_schema_to_visjs.py --validate-only
-
-  echo ""
-  echo "=== RESULT: CONSUMPTION INVENTORY GRAPH CONTRACT VALIDATED ==="
-} | tee "$LOG_FILE"
-
-Then run:
-
-cd consumption_inventory_graph
-./run_all_checks.sh
-
-If check_consistency.py or convert_schema_to_visjs.py fail because of hardcoded model_linkml paths, fix only the copied scripts inside consumption_inventory_graph/05_validators/ to resolve paths relative to the package root.
-
-Return:
-1. files changed
-2. what hardcoded paths were fixed
-3. full run output
-4. PASS/FAIL for all three checks
+Before making changes, return the exact file plan.
