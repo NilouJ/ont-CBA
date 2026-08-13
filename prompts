@@ -1,56 +1,69 @@
-Pause and check Identity/AAD to DirectoryPerson.
+Please review the main ontology schema YAML file only and confirm whether the current graph model is internally consistent for the CommDataIQ extension scope.
 
-I think the schema is missing the person identity resolution path.
+Do not redesign the model unless you find a real inconsistency.
+Do not add new concepts unless directly supported by the schema/source evidence.
+Do not add Identity -> DirectoryPerson unless there is clear evidence that the identity record and person record represent the same human, not an owner/contact relationship.
 
-Do not redesign the model.
-Do not add HumanAccount/ServiceAccount/BatchAccount as physical classes.
-Do not add REPORTS_TO.
+Check these points:
 
-Check Method3 output and schema fields for identity/person evidence:
-- ad_upn
-- ad_display_name
-- email
-- lan_id
-- sa_contactemail
-- wd_cmdb_owned_by_email
-- any Workday/person email/name fields
+1. Account taxonomy
 
-If evidence exists, add this conditional/derived edge:
+Confirm the schema clearly supports the canonical account taxonomy:
 
-RESOLVES_TO_PERSON:
-  source: Identity
-  target: DirectoryPerson
-  semantic_layer: derived_reference
-  materialisation_status: conditional
-  assertion_status: derived
-  evidence_class: derived_from_ad_workday_or_owner_email
-  provenance_required: true
+- Human / Human
+- NonHuman / ServiceAccount
+- NonHuman / Batch
+- Unknown / Unknown
 
-Materialise only when:
-- an Identity identifier exists, such as ad_upn/email/lan_id
-AND
-- a DirectoryPerson identifier exists, such as email/person_id/display_name/contact email
+Check that Unknown/Unknown is review-required and not treated as a normal resolved account type.
 
-Do not claim Method3 directly outputs this as a raw edge.
-It is a derived graph edge from identity/person fields.
+2. Core graph structure
 
-Also update the visual/visjs model so the path is visible:
+Confirm the schema supports these graph paths:
 
-Account -> HAS_IDENTITY -> Identity -> RESOLVES_TO_PERSON -> DirectoryPerson -> BELONGS_TO -> BusinessUnit
+- Account -> ACCESSED -> Table
+- Table -> IN_DATABASE -> Database
+- Table -> CATALOGUED_AS -> CommDataIQAsset
+- Account -> HAS_IDENTITY -> Identity
+- Account -> ACCOUNTABLE_TO / HAS_OWNER -> DirectoryPerson
+- ConfigurationItem -> CI_OWNED_BY / CI_MANAGED_BY -> DirectoryPerson
+- DirectoryPerson -> BELONGS_TO -> BusinessUnit
+- ConfigurationItem -> RESOLVES_TO_APP -> ApplicationService
+- Account -> HAS_XCOM_TARGET -> XCOMSystem
+- Database -> IS_SANDPIT -> SandpitRecord
 
-Keep Account -> HAS_OWNER -> DirectoryPerson as well, because owner/contact resolution is a separate path.
+Also confirm that the visual account aliases HumanAccount, ServiceAccount, and BatchAccount are not separate physical classes unless the schema explicitly defines them as such.
 
-After changes, rerun:
-python3 model_linkml/check_consistency.py
-.venv/bin/linkml-lint model_linkml/account_graph.yaml
-.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
-python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
+3. Conditional logic
 
-Return only:
-- whether Method3 has enough evidence
-- edge added or not
-- files changed
-- checker result
-- lint error count
-- validation result
-- visjs converter result
+Confirm the conditional rules are represented correctly:
+
+- SandpitRecord is part of the model but is Teradata-only and conditionally populated.
+- Database -> IS_SANDPIT -> SandpitRecord is created only when Teradata database evidence exists and at least one sandpit field is populated.
+- XCOMSystem is Batch-only and created only when xcom_remote or equivalent XCOM evidence exists.
+- CI / Owner / Application paths apply to ServiceAccount and Batch when evidence exists.
+- Human accounts do not require CI/owner/application resolution.
+- Unknown/Unknown records must be marked for review.
+- Unknown records should only create data-access/table/database edges when source values are reliable.
+- Identity -> DirectoryPerson is intentionally not added globally because it may conflate account identity with owner/contact person.
+
+4. Validation proof
+
+Check that the schema and generated artefacts are aligned with the current validation status:
+
+- consistency checker: 8/8 pass
+- lint: 0 errors
+- schema validation: no issues
+- vis/model converter: 13 nodes / 20 edges valid
+
+Please return a concise review with:
+
+A. PASS / FAIL for account taxonomy  
+B. PASS / FAIL for graph structure  
+C. PASS / FAIL for conditional logic  
+D. PASS / FAIL for Identity -> DirectoryPerson decision  
+E. PASS / FAIL for validation artefact alignment  
+F. Any real issues found  
+G. Any optional wording-only improvements  
+
+Do not propose large redesigns. Focus only on whether the current schema/model is good enough to freeze for the schema/model phase.
