@@ -1,88 +1,103 @@
-Stop. The package is too complicated.
+Clean the human-readable comments in the clean package.
 
-I want the clean package reduced to only three core parts:
-
-1. extractor/
-2. mapping/
-3. schema/
-
-Do not modify original model_linkml files.
 Do not change schema logic.
 Do not change edge logic.
-Do not redesign the model.
+Do not change class names, property names, enum values, edge labels, source nodes, or target nodes.
+Do not modify original model_linkml files.
+Only update files inside consumption_inventory_graph/.
 
-Delete/remove from the clean package:
-- reports/
-- evidence/
-- schema_contract/
-- validators/ unless needed for one simple check
-- 03_schema/
-- numbered folders
-- candidate folders
-- visual artefacts
-- gap reports
-- logs
-- extra investigation files
+Required changes:
 
-Final structure must be:
+1. Add the curated contract table into the clean package
 
-consumption_inventory_graph/
-  README.md
-  run_checks.sh
+Copy:
 
-  extractor/
-    extract_method3_evidence.py
-    outputs/
-      method3_output_columns.csv
-      method3_joins.csv
-      method3_sources.csv
-      method3_audit_fields.csv
-      method3_literals.csv
+model_linkml/canonical_contract_table.md
 
-  mapping/
-    source_mapping.yaml
-    classification_rules.yaml
+to:
 
-  schema/
-    account_graph.yaml
-    edge_policy.yaml
-    business_validation_rules.yaml
-    account_graph.schema.json
+consumption_inventory_graph/schema/canonical_contract_table.md
 
-Optional only if already working and simple:
-  validation/
-    validate_schema_freeze.py
-    check_consistency.py
-    validation_result.json
+This file is the curated design contract behind the final schema.
 
-The story must be:
+2. Remove rubbish / confusing comments from YAML files
 
-Method3 extractor evidence
-  -> deterministic evidence extraction
-  -> deterministic source-to-schema mapping
-  -> curated graph schema contract
-  -> generated JSON schema
+In these clean package files only:
 
-Important wording:
-- Extractor output is deterministic.
-- Source mapping is deterministic.
-- Schema/edge design is curated and evidence-informed.
-- Do not claim edge labels are automatically extracted from Method3.
-- Do not claim final ontology is auto-generated.
+consumption_inventory_graph/schema/account_graph.yaml
+consumption_inventory_graph/schema/edge_policy.yaml
+consumption_inventory_graph/schema/business_validation_rules.yaml
+consumption_inventory_graph/mapping/source_mapping.yaml
+consumption_inventory_graph/mapping/classification_rules.yaml
 
-Update README.md to explain only this simple story.
+Remove or rewrite comments that say things like:
 
-Create run_checks.sh that only runs:
-1. python3 extractor/extract_method3_evidence.py
-2. python3 validation/validate_schema_freeze.py if validation folder is kept
-3. python3 validation/check_consistency.py if validation folder is kept
+- source of truth: model_linkml/canonical_contract_table.md
+- No ETL code
+- No generated schema artefacts yet
+- derived from Method3 output
+- any old path pointing to model_linkml/
+- any messy working-note comments
 
-If validation folder is removed, run_checks.sh should only validate that required files exist and extractor outputs are readable.
+3. Use clean wording
+
+For extractor evidence files / mapping files, use:
+
+"Source of truth: extractor outputs under extractor/outputs/."
+
+For schema files, use:
+
+"Schema namespace: cba.com"
+
+For curated schema design comments, use:
+
+"Curated schema contract: schema/canonical_contract_table.md"
+
+4. Update schema IDs / example URLs only if they are human-readable metadata and safe to update
+
+Where current YAML has example placeholder IDs like:
+
+https://example.org/account-graph
+https://example.org/edge-policy
+
+replace with CBA-style metadata such as:
+
+https://cba.com/consumption-inventory/account-graph
+https://cba.com/consumption-inventory/edge-policy
+https://cba.com/consumption-inventory/business-validation-rules
+
+Do not change technical imports/prefixes that are required by the schema tooling.
+
+Important:
+If there is a required technical prefix like:
+
+linkml: https://w3id.org/linkml/
+
+leave it unchanged.
+
+5. README wording
+
+Update README to say:
+
+"The extractor outputs are the deterministic evidence source. The canonical contract table is the curated design contract used to define the final graph schema, edge policy, and business validation rules. The schema files use a CBA-style namespace for package metadata."
+
+Do not claim:
+- edge labels are extracted directly from Method3
+- the final ontology is automatically generated
+- Claude generated the schema
+- LinkML is the external-facing method
+
+6. Rerun checks
+
+Run:
+
+cd consumption_inventory_graph
+./run_checks.sh
 
 Return:
-1. final tree
-2. removed folders/files
-3. files kept
-4. one-paragraph explanation of the package
-5. confirmation original model_linkml files were not modified
-6. confirmation schema files were not changed semantically
+1. files changed
+2. exact comments/metadata updated
+3. confirmation schema logic did not change
+4. confirmation original model_linkml files were not modified
+5. PASS/FAIL summary
+6. final tree
