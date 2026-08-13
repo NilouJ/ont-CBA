@@ -3,19 +3,68 @@ Please review the main ontology schema YAML file only and confirm whether the cu
 Do not redesign the model unless you find a real inconsistency.
 Do not add new concepts unless directly supported by the schema/source evidence.
 Do not add Identity -> DirectoryPerson unless there is clear evidence that the identity record and person record represent the same human, not an owner/contact relationship.
+Do not treat visual aliases as physical graph classes unless the schema explicitly defines them as physical classes.
 
 Check these points:
 
-1. Account taxonomy
+1. Taxonomy and controlled classifications
 
-Confirm the schema clearly supports the canonical account taxonomy:
+Confirm the schema clearly supports the main canonical account taxonomy:
 
 - Human / Human
 - NonHuman / ServiceAccount
 - NonHuman / Batch
 - Unknown / Unknown
 
-Check that Unknown/Unknown is review-required and not treated as a normal resolved account type.
+Check that this is represented through:
+
+- canonical_account_class:
+  - Human
+  - NonHuman
+  - Unknown
+
+- canonical_account_subtype:
+  - Human
+  - ServiceAccount
+  - Batch
+  - Unknown
+
+Confirm that Unknown / Unknown is review-required and not treated as a normal resolved account type.
+
+Also check related controlled classifications are consistent and non-conflicting:
+
+- visual account aliases:
+  - HumanAccount
+  - ServiceAccount
+  - BatchAccount
+
+- edge / relationship labels:
+  - ACCESSED
+  - IN_DATABASE
+  - CATALOGUED_AS
+  - HAS_IDENTITY
+  - BELONGS_TO
+  - ACCOUNTABLE_TO / HAS_OWNER
+  - ASSIGNED_CI
+  - CI_OWNED_BY
+  - CI_MANAGED_BY
+  - RESOLVES_TO_APP
+  - HAS_XCOM_TARGET
+  - IS_SANDPIT
+
+- materialisation / rule status:
+  - always
+  - conditional
+  - not_materialised
+  - review_required
+
+- evidence / provenance categories:
+  - direct
+  - derived
+  - conditional
+  - requires_review
+
+Please confirm whether these taxonomy/control values are aligned across the schema and policy files, and whether any naming conflict exists.
 
 2. Core graph structure
 
@@ -43,7 +92,7 @@ Confirm the conditional rules are represented correctly:
 - XCOMSystem is Batch-only and created only when xcom_remote or equivalent XCOM evidence exists.
 - CI / Owner / Application paths apply to ServiceAccount and Batch when evidence exists.
 - Human accounts do not require CI/owner/application resolution.
-- Unknown/Unknown records must be marked for review.
+- Unknown / Unknown records must be marked for review.
 - Unknown records should only create data-access/table/database edges when source values are reliable.
 - Identity -> DirectoryPerson is intentionally not added globally because it may conflate account identity with owner/contact person.
 
@@ -59,11 +108,12 @@ Check that the schema and generated artefacts are aligned with the current valid
 Please return a concise review with:
 
 A. PASS / FAIL for account taxonomy  
-B. PASS / FAIL for graph structure  
-C. PASS / FAIL for conditional logic  
-D. PASS / FAIL for Identity -> DirectoryPerson decision  
-E. PASS / FAIL for validation artefact alignment  
-F. Any real issues found  
-G. Any optional wording-only improvements  
+B. PASS / FAIL for related controlled classifications  
+C. PASS / FAIL for graph structure  
+D. PASS / FAIL for conditional logic  
+E. PASS / FAIL for Identity -> DirectoryPerson decision  
+F. PASS / FAIL for validation artefact alignment  
+G. Any real issues found  
+H. Any optional wording-only improvements  
 
 Do not propose large redesigns. Focus only on whether the current schema/model is good enough to freeze for the schema/model phase.
