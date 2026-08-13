@@ -1,81 +1,88 @@
-Stop.
+Stop. The package is too complicated.
 
-The candidate edge generation story is not clean enough. Remove it from the core package.
+I want the clean package reduced to only three core parts:
+
+1. extractor/
+2. mapping/
+3. schema/
 
 Do not modify original model_linkml files.
 Do not change schema logic.
 Do not change edge logic.
-Do not modify the final schema contract.
+Do not redesign the model.
 
-Clean up consumption_inventory_graph so the package tells only this honest story:
+Delete/remove from the clean package:
+- reports/
+- evidence/
+- schema_contract/
+- validators/ unless needed for one simple check
+- 03_schema/
+- numbered folders
+- candidate folders
+- visual artefacts
+- gap reports
+- logs
+- extra investigation files
 
-1. Method3 evidence extraction is deterministic.
-2. Final schema/edge design is curated and evidence-informed.
-3. Validation/checking is deterministic.
-
-Remove from the clean package:
-- 02_candidates/
-- derive_candidates.py
-- candidate_nodes.csv
-- candidate_edges.csv
-- candidate_conditions.csv
-- candidate_column_relationships.csv
-- any candidate-related README claims
-
-Rename/reorganise folders to:
+Final structure must be:
 
 consumption_inventory_graph/
   README.md
-  run_all_checks.sh
+  run_checks.sh
 
-  evidence/
-    method3_extraction_report.md
-    method3_output_columns.csv
-    method3_joins.csv
-    method3_sources.csv
-    method3_audit_fields.csv
-    method3_literals.csv
+  extractor/
+    extract_method3_evidence.py
+    outputs/
+      method3_output_columns.csv
+      method3_joins.csv
+      method3_sources.csv
+      method3_audit_fields.csv
+      method3_literals.csv
 
-  schema_contract/
-    account_graph.yaml
-    edge_policy.yaml
+  mapping/
     source_mapping.yaml
     classification_rules.yaml
+
+  schema/
+    account_graph.yaml
+    edge_policy.yaml
     business_validation_rules.yaml
     account_graph.schema.json
 
-  validators/
+Optional only if already working and simple:
+  validation/
     validate_schema_freeze.py
     check_consistency.py
+    validation_result.json
 
-  reports/
-    schema_freeze_validation_result.json
-    schema_freeze_check_run.log
+The story must be:
 
-Update validate_schema_freeze.py and check_consistency.py paths to read from schema_contract/.
+Method3 extractor evidence
+  -> deterministic evidence extraction
+  -> deterministic source-to-schema mapping
+  -> curated graph schema contract
+  -> generated JSON schema
 
-Update run_all_checks.sh to run only:
-1. python3 validators/validate_schema_freeze.py
-2. python3 validators/check_consistency.py
+Important wording:
+- Extractor output is deterministic.
+- Source mapping is deterministic.
+- Schema/edge design is curated and evidence-informed.
+- Do not claim edge labels are automatically extracted from Method3.
+- Do not claim final ontology is auto-generated.
 
-Update README.md with this wording:
+Update README.md to explain only this simple story.
 
-"The Method3 extractor evidence is used as the deterministic evidence source. The graph schema contract is curated from the existing base schema using that evidence. The validators provide deterministic checks over the final schema contract."
+Create run_checks.sh that only runs:
+1. python3 extractor/extract_method3_evidence.py
+2. python3 validation/validate_schema_freeze.py if validation folder is kept
+3. python3 validation/check_consistency.py if validation folder is kept
 
-Do not claim:
-- edges were auto-generated
-- edge labels were derived directly from Method3
-- final ontology was generated automatically
-
-After cleanup, run:
-
-cd consumption_inventory_graph
-./run_all_checks.sh
+If validation folder is removed, run_checks.sh should only validate that required files exist and extractor outputs are readable.
 
 Return:
 1. final tree
-2. removed files
-3. files changed
-4. full PASS/FAIL output
-5. confirmation schema contract did not change semantically
-6. confirmation original model_linkml files were not modified
+2. removed folders/files
+3. files kept
+4. one-paragraph explanation of the package
+5. confirmation original model_linkml files were not modified
+6. confirmation schema files were not changed semantically
