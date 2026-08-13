@@ -1,92 +1,54 @@
-Patch only:
+Stop and simplify.
 
-consumption_inventory_graph/02_candidates/derive_candidates.py
+Do not pretend edge labels are fully extracted from Method3.
 
-Do not add a separate checker.
-Do not change validators.
-Do not change schema logic.
-Do not change edge logic.
+Correct model:
+- Method3 columns deterministically produce relationship evidence.
+- Canonical edge labels are curated schema vocabulary.
+- The script maps evidence patterns to canonical labels using an explicit mapping table.
+
+Do not hide this as “fully derived”.
+Do not claim the final schema is automatically generated.
 Do not modify 03_schema/.
 Do not modify original model_linkml files.
 
-Goal:
-Make the candidate generator warn when candidate_edges.csv references node types that are not present in candidate_nodes.csv.
+Patch only 02_candidates/derive_candidates.py and README wording.
 
-This must be a warning only, not a failure.
+In derive_candidates.py:
+1. Create an explicit mapping table called RELATIONSHIP_RULES.
+2. Each rule should have:
+   - relationship_id
+   - source_columns
+   - target_columns
+   - relationship_meaning
+   - source_node
+   - target_node
+   - canonical_edge_label
+   - label_origin = "curated_schema_vocabulary"
+   - evidence_origin = "method3_columns"
+   - derivation_type = "deterministic_evidence_mapping"
 
-Required behaviour:
+3. The script should check which source_columns/target_columns exist in the Method3 truth tables/source mapping.
+4. Only emit a candidate relationship when at least one evidence column exists.
+5. Write:
+   - 02_candidates/candidate_column_relationships.csv
+   - 02_candidates/candidate_edges.csv
+   - 02_candidates/candidate_node_suggestions.csv if needed
 
-After candidate_nodes.csv and candidate_edges.csv are generated:
+Important wording:
+- relationship evidence is deterministic
+- edge labels are curated canonical vocabulary
+- candidate layer supports/explains the schema
+- candidate layer does not generate or overwrite the final schema
 
-1. Read candidate_nodes.csv.
-2. Read candidate_edges.csv.
-3. Collect node names from:
-   - candidate_nodes.csv candidate_node column
-   - candidate_edges.csv source_node column
-   - candidate_edges.csv target_node column
+Update README with exactly this explanation.
 
-4. If any source_node or target_node from candidate_edges.csv is not present in candidate_nodes.csv:
-   - do not fail
-   - print a warning:
-     "WARNING: candidate_nodes.csv does not cover all node types referenced by candidate_edges.csv"
-   - print the missing node names
-   - write a file:
-     02_candidates/candidate_node_suggestions.csv
-
-5. candidate_node_suggestions.csv should contain:
-   - suggested_node
-   - reason
-   - referenced_by_edges
-   - suggested_evidence_columns
-   - status
-
-6. status should be:
-   suggested_from_candidate_edges
-
-7. suggested_evidence_columns should be inferred simply from known patterns if possible:
-   - Account: reqUser, user_id, account, account_type
-   - Identity: ad_id, ad_upn, ad_display_name
-   - Table: table, table_name
-   - Database: database, database_name
-   - CommDataIQAsset: cdiq_status, cdiq_id, asset
-   - DirectoryPerson: owner, contact, email, sa_contactemail, wd_cmdb_owned_by_email
-   - BusinessUnit: wd_team_2, wd_team_3, wd_team_4
-   - ConfigurationItem: cmdb_ci_number, sp_ci, ci
-   - ApplicationService: cmdb_app_name, sa_ref_app, application
-   - XCOMSystem: xcom_remote
-   - SandpitRecord: sandpit_business_unit, sandpit_owner, sandpit_status
-
-8. If there are no missing nodes:
-   - print:
-     "candidate node coverage: PASS"
-   - still write candidate_node_suggestions.csv with header only or an empty file.
-
-9. If there are missing nodes:
-   - print:
-     "candidate node coverage: WARNING"
-   - print:
-     "missing candidate nodes suggested: <count>"
-   - do not exit 1
-   - exit 0
-
-Important:
-This is not validation failure.
-This is only an evidence-layer completeness warning.
-
-The final curated schema remains in 03_schema/.
-The final schema validators/checkers remain responsible for schema correctness.
-
-After patching, run:
-
+Run:
 cd consumption_inventory_graph
-python3 02_candidates/derive_candidates.py
 ./run_all_checks.sh
 
 Return:
 1. files changed
-2. candidate_nodes.csv row count
-3. candidate_edges.csv row count
-4. candidate_node_suggestions.csv row count
-5. warning output
-6. PASS/FAIL summary
-7. confirmation 03_schema/ was not modified
+2. whether schema files changed
+3. candidate relationship count
+4. PASS/FAIL summary
