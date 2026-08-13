@@ -1,26 +1,56 @@
-Decision: keep SandpitRecord as a first-class schema class.
+Pause and check Identity/AAD to DirectoryPerson.
 
-It is part of the Teradata model, but it is conditionally populated.
+I think the schema is missing the person identity resolution path.
 
-Do not remove SandpitRecord.
-Do not mark it as backlog.
-Do not make it universal across Omnia.
+Do not redesign the model.
+Do not add HumanAccount/ServiceAccount/BatchAccount as physical classes.
+Do not add REPORTS_TO.
 
-Policy:
-Database -> IS_SANDPIT -> SandpitRecord
+Check Method3 output and schema fields for identity/person evidence:
+- ad_upn
+- ad_display_name
+- email
+- lan_id
+- sa_contactemail
+- wd_cmdb_owned_by_email
+- any Workday/person email/name fields
 
-Materialisation condition:
-- source/platform is Teradata
-- and at least one sandpit evidence field exists:
-  sandpit_business_unit
-  sandpit_owner
-  sandpit_status
+If evidence exists, add this conditional/derived edge:
 
-If sandpit fields are null, the Database still exists, but no IS_SANDPIT edge is materialised.
+RESOLVES_TO_PERSON:
+  source: Identity
+  target: DirectoryPerson
+  semantic_layer: derived_reference
+  materialisation_status: conditional
+  assertion_status: derived
+  evidence_class: derived_from_ad_workday_or_owner_email
+  provenance_required: true
 
-Update notes/descriptions only if needed to make this clear:
-“Teradata-specific optional reference entity; conditionally populated from sandpit survey fields.”
+Materialise only when:
+- an Identity identifier exists, such as ad_upn/email/lan_id
+AND
+- a DirectoryPerson identifier exists, such as email/person_id/display_name/contact email
 
-Rerun:
+Do not claim Method3 directly outputs this as a raw edge.
+It is a derived graph edge from identity/person fields.
+
+Also update the visual/visjs model so the path is visible:
+
+Account -> HAS_IDENTITY -> Identity -> RESOLVES_TO_PERSON -> DirectoryPerson -> BELONGS_TO -> BusinessUnit
+
+Keep Account -> HAS_OWNER -> DirectoryPerson as well, because owner/contact resolution is a separate path.
+
+After changes, rerun:
 python3 model_linkml/check_consistency.py
+.venv/bin/linkml-lint model_linkml/account_graph.yaml
+.venv/bin/linkml-validate --schema model_linkml/account_graph.yaml --target-class Account model_linkml/examples/valid/account.valid.yaml
 python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
+
+Return only:
+- whether Method3 has enough evidence
+- edge added or not
+- files changed
+- checker result
+- lint error count
+- validation result
+- visjs converter result
