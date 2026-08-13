@@ -1,119 +1,58 @@
-Please review the main ontology schema YAML file only and confirm whether the current graph model is internally consistent for the CommDataIQ extension scope.
+Remove external-facing references to LinkML terminology from descriptions, comments, reports, and documentation.
 
-Do not redesign the model unless you find a real inconsistency.
-Do not add new concepts unless directly supported by the schema/source evidence.
-Do not add Identity -> DirectoryPerson unless there is clear evidence that the identity record and person record represent the same human, not an owner/contact relationship.
-Do not treat visual aliases as physical graph classes unless the schema explicitly defines them as physical classes.
+Do not change schema logic.
+Do not change edge logic.
+Do not change class names, property names, enum values, edge labels, source nodes, or target nodes.
+Do not rename files or folders yet.
+Do not change imports or commands.
+Only update human-readable wording.
 
-Check these points:
+Replace human-readable wording as follows:
 
-1. Taxonomy and controlled classifications
+- LinkML schema -> graph schema
+- LinkML model -> graph model
+- LinkML validation -> schema validation
+- LinkML classes -> schema classes
+- LinkML slots -> schema properties
+- LinkML enum -> enum
+- generated from LinkML -> generated from the schema definition
 
-Confirm the schema clearly supports the main canonical account taxonomy:
+Also check edge-related documentation wording.
 
-- Human / Human
-- NonHuman / ServiceAccount
-- NonHuman / Batch
-- Unknown / Unknown
+Edges are defined in:
 
-Check that this is represented through:
+- model_linkml/policy/edge_policy.yaml
 
-- canonical_account_class:
-  - Human
-  - NonHuman
-  - Unknown
+Visual/display edges may also appear in:
 
-- canonical_account_subtype:
-  - Human
-  - ServiceAccount
-  - Batch
-  - Unknown
+- model_linkml/generated/visual_schema_v2.json
+- model_linkml/generated/visjs_model_graph.json
+- model_linkml/references/final_visual_schema_plan.md
 
-Confirm that Unknown / Unknown is review-required and not treated as a normal resolved account type.
+For edge wording, use:
 
-Also check related controlled classifications are consistent and non-conflicting:
+- canonical edge contract
+- relationship definitions
+- source node
+- target node
+- edge label
+- materialisation policy
+- evidence/provenance requirements
 
-- visual account aliases:
-  - HumanAccount
-  - ServiceAccount
-  - BatchAccount
+Do not call them LinkML edges.
+Do not call source/target nodes LinkML classes.
+Use “schema class” or “node type” instead.
 
-- edge / relationship labels:
-  - ACCESSED
-  - IN_DATABASE
-  - CATALOGUED_AS
-  - HAS_IDENTITY
-  - BELONGS_TO
-  - ACCOUNTABLE_TO / HAS_OWNER
-  - ASSIGNED_CI
-  - CI_OWNED_BY
-  - CI_MANAGED_BY
-  - RESOLVES_TO_APP
-  - HAS_XCOM_TARGET
-  - IS_SANDPIT
+After wording updates, rerun:
 
-- materialisation / rule status:
-  - always
-  - conditional
-  - not_materialised
-  - review_required
+python3 model_linkml/check_consistency.py
+python3 model_linkml/validate_schema_freeze.py
+python3 model_linkml/scripts/convert_schema_to_visjs.py --validate-only
 
-- evidence / provenance categories:
-  - direct
-  - derived
-  - conditional
-  - requires_review
-
-Please confirm whether these taxonomy/control values are aligned across the schema and policy files, and whether any naming conflict exists.
-
-2. Core graph structure
-
-Confirm the schema supports these graph paths:
-
-- Account -> ACCESSED -> Table
-- Table -> IN_DATABASE -> Database
-- Table -> CATALOGUED_AS -> CommDataIQAsset
-- Account -> HAS_IDENTITY -> Identity
-- Account -> ACCOUNTABLE_TO / HAS_OWNER -> DirectoryPerson
-- ConfigurationItem -> CI_OWNED_BY / CI_MANAGED_BY -> DirectoryPerson
-- DirectoryPerson -> BELONGS_TO -> BusinessUnit
-- ConfigurationItem -> RESOLVES_TO_APP -> ApplicationService
-- Account -> HAS_XCOM_TARGET -> XCOMSystem
-- Database -> IS_SANDPIT -> SandpitRecord
-
-Also confirm that the visual account aliases HumanAccount, ServiceAccount, and BatchAccount are not separate physical classes unless the schema explicitly defines them as such.
-
-3. Conditional logic
-
-Confirm the conditional rules are represented correctly:
-
-- SandpitRecord is part of the model but is Teradata-only and conditionally populated.
-- Database -> IS_SANDPIT -> SandpitRecord is created only when Teradata database evidence exists and at least one sandpit field is populated.
-- XCOMSystem is Batch-only and created only when xcom_remote or equivalent XCOM evidence exists.
-- CI / Owner / Application paths apply to ServiceAccount and Batch when evidence exists.
-- Human accounts do not require CI/owner/application resolution.
-- Unknown / Unknown records must be marked for review.
-- Unknown records should only create data-access/table/database edges when source values are reliable.
-- Identity -> DirectoryPerson is intentionally not added globally because it may conflate account identity with owner/contact person.
-
-4. Validation proof
-
-Check that the schema and generated artefacts are aligned with the current validation status:
-
-- consistency checker: 8/8 pass
-- lint: 0 errors
-- schema validation: no issues
-- vis/model converter: 13 nodes / 20 edges valid
-
-Please return a concise review with:
-
-A. PASS / FAIL for account taxonomy  
-B. PASS / FAIL for related controlled classifications  
-C. PASS / FAIL for graph structure  
-D. PASS / FAIL for conditional logic  
-E. PASS / FAIL for Identity -> DirectoryPerson decision  
-F. PASS / FAIL for validation artefact alignment  
-G. Any real issues found  
-H. Any optional wording-only improvements  
-
-Do not propose large redesigns. Focus only on whether the current schema/model is good enough to freeze for the schema/model phase.
+Return:
+1. files changed
+2. whether only human-readable wording changed
+3. whether any schema/edge logic changed
+4. checker result
+5. schema freeze validation result
+6. visual converter result
