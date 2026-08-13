@@ -1,35 +1,46 @@
-Pause and follow this exactly.
+Good. Implement this, but keep the naming and story very clear.
 
-Do not redesign anything.
-Do not change schema logic.
-Do not change edge logic.
-Do not modify the accepted final schema design.
-Do not modify original model_linkml files.
+Use:
 
-We are only improving the clean package:
+02_candidates/
+  derive_candidates.py
+  candidate_nodes.csv
+  candidate_edges.csv
+  candidate_conditions.csv
 
-consumption_inventory_graph/
-
-Goal:
-Make the package tell this simple story:
-
-1. Method3 extractor package is the source of truth.
-2. Truth tables are extracted deterministically from Method3 evidence.
-3. Candidate nodes/edges/conditions are derived deterministically from those truth tables.
-4. The final graph schema is a curated contract refined from the existing base schema using those evidence-backed candidates.
-5. Validators/checkers deterministically prove the final schema is internally consistent.
+The candidate files are evidence-only outputs.
 
 Important:
-- candidate_nodes.csv, candidate_edges.csv, and candidate_conditions.csv are evidence outputs only.
-- They must NOT overwrite or regenerate the final schema.
-- The final schema remains:
-  schema/account_graph.yaml
-  schema/edge_policy.yaml
-  schema/source_mapping.yaml
-  schema/classification_rules.yaml
-  schema/business_validation_rules.yaml
-  schema/account_graph.schema.json
+- derive_candidates.py must NOT read or write 03_schema/
+- derive_candidates.py must NOT overwrite the final schema
+- derive_candidates.py must NOT generate account_graph.yaml or edge_policy.yaml
+- candidate_nodes.csv / candidate_edges.csv / candidate_conditions.csv are not the final schema
+- final schema remains curated in 03_schema/
 
-Only add/update files inside consumption_inventory_graph/.
+Update README.md to say:
 
-Before making changes, return the exact file plan.
+01_source_of_truth/ contains Method3 extracted evidence.
+02_candidates/ contains deterministic candidate graph structures derived from that evidence.
+03_schema/ contains the curated final graph schema contract.
+05_validators/ contains deterministic validators for the final schema.
+06_reports/ contains generated validation outputs.
+
+Update run_all_checks.sh so the first step is labelled:
+
+0. Deriving evidence-based graph candidates
+
+not:
+
+0. Validating candidates
+
+Then run:
+
+cd consumption_inventory_graph
+./run_all_checks.sh
+
+Return:
+1. final tree
+2. files created/changed
+3. candidate row counts
+4. PASS/FAIL summary
+5. confirmation 03_schema/ was not modified
