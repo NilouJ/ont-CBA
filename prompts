@@ -1,103 +1,62 @@
-Clean the human-readable comments in the clean package.
+Final cleanup only.
 
+Do not modify original model_linkml files.
 Do not change schema logic.
 Do not change edge logic.
-Do not change class names, property names, enum values, edge labels, source nodes, or target nodes.
-Do not modify original model_linkml files.
-Only update files inside consumption_inventory_graph/.
+Do not change files inside schema/.
+Do not change files inside mapping/.
+Do not change validators except if a path still points to 03_schema/.
 
-Required changes:
+Remove this leftover folder from the clean package only:
 
-1. Add the curated contract table into the clean package
+consumption_inventory_graph/03_schema/
 
-Copy:
+Reason:
+The final schema contract now lives in:
 
-model_linkml/canonical_contract_table.md
+consumption_inventory_graph/schema/
 
-to:
+The package should not contain both 03_schema/ and schema/ because it is confusing.
 
-consumption_inventory_graph/schema/canonical_contract_table.md
+Final tree must be only:
 
-This file is the curated design contract behind the final schema.
+consumption_inventory_graph/
+  README.md
+  run_checks.sh
 
-2. Remove rubbish / confusing comments from YAML files
+  extractor/
+    extract_method3_evidence.py
+    outputs/
+      method3_output_columns.csv
+      method3_joins.csv
+      method3_sources.csv
+      method3_audit_fields.csv
+      method3_literals.csv
 
-In these clean package files only:
+  mapping/
+    source_mapping.yaml
+    classification_rules.yaml
 
-consumption_inventory_graph/schema/account_graph.yaml
-consumption_inventory_graph/schema/edge_policy.yaml
-consumption_inventory_graph/schema/business_validation_rules.yaml
-consumption_inventory_graph/mapping/source_mapping.yaml
-consumption_inventory_graph/mapping/classification_rules.yaml
+  schema/
+    canonical_contract_table.md
+    account_graph.yaml
+    edge_policy.yaml
+    business_validation_rules.yaml
+    account_graph.schema.json
 
-Remove or rewrite comments that say things like:
+  validation/
+    validate_schema_freeze.py
+    check_consistency.py
+    validation_result.json
 
-- source of truth: model_linkml/canonical_contract_table.md
-- No ETL code
-- No generated schema artefacts yet
-- derived from Method3 output
-- any old path pointing to model_linkml/
-- any messy working-note comments
-
-3. Use clean wording
-
-For extractor evidence files / mapping files, use:
-
-"Source of truth: extractor outputs under extractor/outputs/."
-
-For schema files, use:
-
-"Schema namespace: cba.com"
-
-For curated schema design comments, use:
-
-"Curated schema contract: schema/canonical_contract_table.md"
-
-4. Update schema IDs / example URLs only if they are human-readable metadata and safe to update
-
-Where current YAML has example placeholder IDs like:
-
-https://example.org/account-graph
-https://example.org/edge-policy
-
-replace with CBA-style metadata such as:
-
-https://cba.com/consumption-inventory/account-graph
-https://cba.com/consumption-inventory/edge-policy
-https://cba.com/consumption-inventory/business-validation-rules
-
-Do not change technical imports/prefixes that are required by the schema tooling.
-
-Important:
-If there is a required technical prefix like:
-
-linkml: https://w3id.org/linkml/
-
-leave it unchanged.
-
-5. README wording
-
-Update README to say:
-
-"The extractor outputs are the deterministic evidence source. The canonical contract table is the curated design contract used to define the final graph schema, edge policy, and business validation rules. The schema files use a CBA-style namespace for package metadata."
-
-Do not claim:
-- edge labels are extracted directly from Method3
-- the final ontology is automatically generated
-- Claude generated the schema
-- LinkML is the external-facing method
-
-6. Rerun checks
-
-Run:
+After removing 03_schema/, run:
 
 cd consumption_inventory_graph
 ./run_checks.sh
 
 Return:
-1. files changed
-2. exact comments/metadata updated
-3. confirmation schema logic did not change
+1. final tree
+2. PASS/FAIL result
+3. confirmation validators read from schema/ and mapping/
 4. confirmation original model_linkml files were not modified
-5. PASS/FAIL summary
-6. final tree
+5. confirmation schema/ files were not changed
