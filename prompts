@@ -1,46 +1,92 @@
-Good. Implement this, but keep the naming and story very clear.
+Patch only:
 
-Use:
+consumption_inventory_graph/02_candidates/derive_candidates.py
 
-02_candidates/
-  derive_candidates.py
-  candidate_nodes.csv
-  candidate_edges.csv
-  candidate_conditions.csv
+Do not add a separate checker.
+Do not change validators.
+Do not change schema logic.
+Do not change edge logic.
+Do not modify 03_schema/.
+Do not modify original model_linkml files.
 
-The candidate files are evidence-only outputs.
+Goal:
+Make the candidate generator warn when candidate_edges.csv references node types that are not present in candidate_nodes.csv.
+
+This must be a warning only, not a failure.
+
+Required behaviour:
+
+After candidate_nodes.csv and candidate_edges.csv are generated:
+
+1. Read candidate_nodes.csv.
+2. Read candidate_edges.csv.
+3. Collect node names from:
+   - candidate_nodes.csv candidate_node column
+   - candidate_edges.csv source_node column
+   - candidate_edges.csv target_node column
+
+4. If any source_node or target_node from candidate_edges.csv is not present in candidate_nodes.csv:
+   - do not fail
+   - print a warning:
+     "WARNING: candidate_nodes.csv does not cover all node types referenced by candidate_edges.csv"
+   - print the missing node names
+   - write a file:
+     02_candidates/candidate_node_suggestions.csv
+
+5. candidate_node_suggestions.csv should contain:
+   - suggested_node
+   - reason
+   - referenced_by_edges
+   - suggested_evidence_columns
+   - status
+
+6. status should be:
+   suggested_from_candidate_edges
+
+7. suggested_evidence_columns should be inferred simply from known patterns if possible:
+   - Account: reqUser, user_id, account, account_type
+   - Identity: ad_id, ad_upn, ad_display_name
+   - Table: table, table_name
+   - Database: database, database_name
+   - CommDataIQAsset: cdiq_status, cdiq_id, asset
+   - DirectoryPerson: owner, contact, email, sa_contactemail, wd_cmdb_owned_by_email
+   - BusinessUnit: wd_team_2, wd_team_3, wd_team_4
+   - ConfigurationItem: cmdb_ci_number, sp_ci, ci
+   - ApplicationService: cmdb_app_name, sa_ref_app, application
+   - XCOMSystem: xcom_remote
+   - SandpitRecord: sandpit_business_unit, sandpit_owner, sandpit_status
+
+8. If there are no missing nodes:
+   - print:
+     "candidate node coverage: PASS"
+   - still write candidate_node_suggestions.csv with header only or an empty file.
+
+9. If there are missing nodes:
+   - print:
+     "candidate node coverage: WARNING"
+   - print:
+     "missing candidate nodes suggested: <count>"
+   - do not exit 1
+   - exit 0
 
 Important:
-- derive_candidates.py must NOT read or write 03_schema/
-- derive_candidates.py must NOT overwrite the final schema
-- derive_candidates.py must NOT generate account_graph.yaml or edge_policy.yaml
-- candidate_nodes.csv / candidate_edges.csv / candidate_conditions.csv are not the final schema
-- final schema remains curated in 03_schema/
+This is not validation failure.
+This is only an evidence-layer completeness warning.
 
-Update README.md to say:
+The final curated schema remains in 03_schema/.
+The final schema validators/checkers remain responsible for schema correctness.
 
-01_source_of_truth/ contains Method3 extracted evidence.
-02_candidates/ contains deterministic candidate graph structures derived from that evidence.
-03_schema/ contains the curated final graph schema contract.
-05_validators/ contains deterministic validators for the final schema.
-06_reports/ contains generated validation outputs.
-
-Update run_all_checks.sh so the first step is labelled:
-
-0. Deriving evidence-based graph candidates
-
-not:
-
-0. Validating candidates
-
-Then run:
+After patching, run:
 
 cd consumption_inventory_graph
+python3 02_candidates/derive_candidates.py
 ./run_all_checks.sh
 
 Return:
-1. final tree
-2. files created/changed
-3. candidate row counts
-4. PASS/FAIL summary
-5. confirmation 03_schema/ was not modified
+1. files changed
+2. candidate_nodes.csv row count
+3. candidate_edges.csv row count
+4. candidate_node_suggestions.csv row count
+5. warning output
+6. PASS/FAIL summary
+7. confirmation 03_schema/ was not modified
