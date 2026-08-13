@@ -1,54 +1,81 @@
-Stop and simplify.
+Stop.
 
-Do not pretend edge labels are fully extracted from Method3.
+The candidate edge generation story is not clean enough. Remove it from the core package.
 
-Correct model:
-- Method3 columns deterministically produce relationship evidence.
-- Canonical edge labels are curated schema vocabulary.
-- The script maps evidence patterns to canonical labels using an explicit mapping table.
-
-Do not hide this as “fully derived”.
-Do not claim the final schema is automatically generated.
-Do not modify 03_schema/.
 Do not modify original model_linkml files.
+Do not change schema logic.
+Do not change edge logic.
+Do not modify the final schema contract.
 
-Patch only 02_candidates/derive_candidates.py and README wording.
+Clean up consumption_inventory_graph so the package tells only this honest story:
 
-In derive_candidates.py:
-1. Create an explicit mapping table called RELATIONSHIP_RULES.
-2. Each rule should have:
-   - relationship_id
-   - source_columns
-   - target_columns
-   - relationship_meaning
-   - source_node
-   - target_node
-   - canonical_edge_label
-   - label_origin = "curated_schema_vocabulary"
-   - evidence_origin = "method3_columns"
-   - derivation_type = "deterministic_evidence_mapping"
+1. Method3 evidence extraction is deterministic.
+2. Final schema/edge design is curated and evidence-informed.
+3. Validation/checking is deterministic.
 
-3. The script should check which source_columns/target_columns exist in the Method3 truth tables/source mapping.
-4. Only emit a candidate relationship when at least one evidence column exists.
-5. Write:
-   - 02_candidates/candidate_column_relationships.csv
-   - 02_candidates/candidate_edges.csv
-   - 02_candidates/candidate_node_suggestions.csv if needed
+Remove from the clean package:
+- 02_candidates/
+- derive_candidates.py
+- candidate_nodes.csv
+- candidate_edges.csv
+- candidate_conditions.csv
+- candidate_column_relationships.csv
+- any candidate-related README claims
 
-Important wording:
-- relationship evidence is deterministic
-- edge labels are curated canonical vocabulary
-- candidate layer supports/explains the schema
-- candidate layer does not generate or overwrite the final schema
+Rename/reorganise folders to:
 
-Update README with exactly this explanation.
+consumption_inventory_graph/
+  README.md
+  run_all_checks.sh
 
-Run:
+  evidence/
+    method3_extraction_report.md
+    method3_output_columns.csv
+    method3_joins.csv
+    method3_sources.csv
+    method3_audit_fields.csv
+    method3_literals.csv
+
+  schema_contract/
+    account_graph.yaml
+    edge_policy.yaml
+    source_mapping.yaml
+    classification_rules.yaml
+    business_validation_rules.yaml
+    account_graph.schema.json
+
+  validators/
+    validate_schema_freeze.py
+    check_consistency.py
+
+  reports/
+    schema_freeze_validation_result.json
+    schema_freeze_check_run.log
+
+Update validate_schema_freeze.py and check_consistency.py paths to read from schema_contract/.
+
+Update run_all_checks.sh to run only:
+1. python3 validators/validate_schema_freeze.py
+2. python3 validators/check_consistency.py
+
+Update README.md with this wording:
+
+"The Method3 extractor evidence is used as the deterministic evidence source. The graph schema contract is curated from the existing base schema using that evidence. The validators provide deterministic checks over the final schema contract."
+
+Do not claim:
+- edges were auto-generated
+- edge labels were derived directly from Method3
+- final ontology was generated automatically
+
+After cleanup, run:
+
 cd consumption_inventory_graph
 ./run_all_checks.sh
 
 Return:
-1. files changed
-2. whether schema files changed
-3. candidate relationship count
-4. PASS/FAIL summary
+1. final tree
+2. removed files
+3. files changed
+4. full PASS/FAIL output
+5. confirmation schema contract did not change semantically
+6. confirmation original model_linkml files were not modified
