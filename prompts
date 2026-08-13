@@ -1,27 +1,56 @@
-Great. Now update/create:
+This run_all_checks.sh is too complicated.
 
-consumption_inventory_graph/run_all_checks.sh
+Do not patch Python code in memory.
+Do not use heredoc exec.
+Do not rewrite REPO_ROOT dynamically.
+Do not use fake layout logic.
 
-It should run from inside consumption_inventory_graph:
+Simplify the package instead:
 
-1. python3 05_validators/validate_schema_freeze.py
-2. python3 05_validators/check_consistency.py
-3. python3 05_validators/convert_schema_to_visjs.py --validate-only
+1. Keep validate_schema_freeze.py as-is because it already reads from consumption_inventory_graph.
+2. For check_consistency.py and convert_schema_to_visjs.py, either:
+   - update the copied versions inside consumption_inventory_graph/05_validators/ so they use paths relative to consumption_inventory_graph, OR
+   - make run_all_checks.sh call them with explicit package paths if they already support that.
 
-It should save the combined output to:
+Do not modify original model_linkml files.
+Only modify copied files inside consumption_inventory_graph/.
 
-06_reports/schema_freeze_check_run.log
+Create a simple run_all_checks.sh:
 
-Make the shell script executable.
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p 06_reports
+LOG_FILE="06_reports/schema_freeze_check_run.log"
+
+{
+  echo "=== Consumption Inventory Graph validation ==="
+  echo ""
+
+  echo "1. Running schema freeze validation..."
+  python3 05_validators/validate_schema_freeze.py
+
+  echo ""
+  echo "2. Running consistency checker..."
+  python3 05_validators/check_consistency.py
+
+  echo ""
+  echo "3. Running visual/model validation..."
+  python3 05_validators/convert_schema_to_visjs.py --validate-only
+
+  echo ""
+  echo "=== RESULT: CONSUMPTION INVENTORY GRAPH CONTRACT VALIDATED ==="
+} | tee "$LOG_FILE"
 
 Then run:
 
 cd consumption_inventory_graph
 ./run_all_checks.sh
 
+If check_consistency.py or convert_schema_to_visjs.py fail because of hardcoded model_linkml paths, fix only the copied scripts inside consumption_inventory_graph/05_validators/ to resolve paths relative to the package root.
+
 Return:
-1. full terminal output
-2. PASS/FAIL for validate_schema_freeze.py
-3. PASS/FAIL for check_consistency.py
-4. PASS/FAIL for convert_schema_to_visjs.py --validate-only
-5. files created/updated in 06_reports/
+1. files changed
+2. what hardcoded paths were fixed
+3. full run output
+4. PASS/FAIL for all three checks
