@@ -1,60 +1,43 @@
-Good. The package copy is done.
+Good. Package copy is confirmed.
 
-Now create the new deterministic validator:
+Now create only this new file:
 
 consumption_inventory_graph/05_validators/validate_schema_freeze.py
 
-This script is separate from check_consistency.py.
+Do not modify any copied schema/policy/generated files.
+Do not modify original model_linkml files.
+Do not change schema logic or edge logic.
 
 Purpose:
-- check_consistency.py checks low-level structural consistency.
-- validate_schema_freeze.py checks the agreed Consumption Inventory Graph schema/model freeze criteria.
+This validator checks the agreed Consumption Inventory Graph schema/model freeze criteria.
 
-Important:
-- Read from consumption_inventory_graph only.
-- Do not read from model_linkml.
-- Do not modify any schema/policy/generated files.
-- Do not change schema logic.
-- Do not change edge logic.
-- Only create validate_schema_freeze.py.
+It must read only from consumption_inventory_graph/.
 
 Inputs:
-- consumption_inventory_graph/03_schema/account_graph.yaml
-- consumption_inventory_graph/03_schema/edge_policy.yaml
-- consumption_inventory_graph/03_schema/classification_rules.yaml
-- consumption_inventory_graph/03_schema/business_validation_rules.yaml
-- consumption_inventory_graph/04_generated/account_graph.schema.json
-- consumption_inventory_graph/04_generated/visual_schema_v2.json
-- consumption_inventory_graph/04_generated/visjs_model_graph.json
+- 03_schema/account_graph.yaml
+- 03_schema/edge_policy.yaml
+- 03_schema/classification_rules.yaml
+- 03_schema/business_validation_rules.yaml
+- 04_generated/account_graph.schema.json
+- 04_generated/visual_schema_v2.json
+- 04_generated/visjs_model_graph.json
 
-Validate these areas:
+It must validate:
 
 A. Account taxonomy
-PASS only if:
 - canonical account class enum has Human, NonHuman, Unknown
 - canonical account subtype enum has Human, ServiceAccount, Batch, Unknown
 - classification rules support Human/Human, NonHuman/ServiceAccount, NonHuman/Batch, Unknown/Unknown
 - Unknown/Unknown is review-required
 
 B. Related controlled classifications
-PASS only if:
-- HumanAccount, ServiceAccount, BatchAccount are not physical schema classes in account_graph.yaml
-- canonical edge labels exist in edge_policy.yaml:
-  ACCESSED
-  IN_DATABASE
-  CATALOGUED_AS
-  HAS_IDENTITY
-  BELONGS_TO
-  ACCOUNTABLE_TO
-  HAS_OWNER
-  OWNED_BY
-  ASSIGNED_CI
-  HAS_XCOM_TARGET
-  RESOLVES_TO_APP
-  IS_SANDPIT
+- HumanAccount, ServiceAccount, BatchAccount are not physical schema classes
+- canonical edge labels exist:
+  ACCESSED, IN_DATABASE, CATALOGUED_AS, HAS_IDENTITY, BELONGS_TO,
+  ACCOUNTABLE_TO, HAS_OWNER, OWNED_BY, ASSIGNED_CI,
+  HAS_XCOM_TARGET, RESOLVES_TO_APP, IS_SANDPIT
 
 C. Core graph structure
-PASS only if edge_policy.yaml supports:
 - Account -> ACCESSED -> Table
 - Table -> IN_DATABASE -> Database
 - Table -> CATALOGUED_AS -> CommDataIQAsset
@@ -67,7 +50,6 @@ PASS only if edge_policy.yaml supports:
 - Database -> IS_SANDPIT -> SandpitRecord
 
 D. Conditional logic
-PASS only if:
 - IS_SANDPIT is Teradata-only
 - IS_SANDPIT is not materialised when sandpit fields are null
 - HAS_XCOM_TARGET is Batch-only or explicitly unsupported for Human, ServiceAccount, Unknown
@@ -77,50 +59,43 @@ PASS only if:
 - Unknown/Unknown only allows data access when source values are reliable
 
 E. Identity -> DirectoryPerson decision
-PASS only if:
 - no active canonical edge exists from Identity to DirectoryPerson
 - no active visual edge exists from Identity/AADIdentity to DirectoryPerson
-- if disabled/unsupported notes exist, they explain this is avoided because it conflates account identity with ownership/contact person
+- disabled/unsupported notes explain that this edge is avoided because it conflates account identity with ownership/contact person, if such notes exist
 
 F. Validation artefact alignment
-PASS only if:
 - generated JSON schema exists and is readable
 - visual schema / visjs model exists and is readable
 - visual/model graph has 13 nodes and 20 edges
 - no orphan visual edges exist
 
 Output:
-Print a clean table:
-
+Print table:
 Area | Result | Details
 
-At the end print either:
-
+At the end print:
 SCHEMA FREEZE VALIDATION: PASS
-
-or:
-
+or
 SCHEMA FREEZE VALIDATION: FAIL
 
-Also write JSON output to:
-
-consumption_inventory_graph/06_reports/schema_freeze_validation_result.json
+Also write:
+06_reports/schema_freeze_validation_result.json
 
 Rules:
 - deterministic Python only
 - no LLM calls
 - use yaml.safe_load and json only
-- parser must tolerate existing key names in edge_policy.yaml such as source_vertex/target_vertex or source/target
-- if any check fails, exit code 1
-- if all checks pass, exit code 0
+- tolerate existing edge_policy key names such as source_vertex/target_vertex or source/target
+- exit code 0 if all pass
+- exit code 1 if any fail
 
-After creating it, run:
+After creating it, run from inside consumption_inventory_graph:
 
-cd consumption_inventory_graph
 python3 05_validators/validate_schema_freeze.py
 
 Return:
-1. whether the script was created
-2. full terminal output
-3. whether the JSON result file was created
-4. any failures
+1. file created
+2. full output
+3. PASS/FAIL
+4. JSON report path
+5. any failures
