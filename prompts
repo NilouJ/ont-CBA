@@ -1,258 +1,189 @@
-Stop focusing on only copying the existing schema.
+Yes — go with **all_accounts only**. That is cleaner and safer.
 
-The key deliverable is to reconstruct the source data model used by Method3 across multiple Excel/source sheets, then use that reconstructed data model to propose the graph schema.
+And no, your ETL does **not** change.
 
-Do not redesign the final schema randomly.
-Do not modify original model_linkml files.
-Do not change accepted schema logic unless explicitly requested.
-Do not use LLM calls in the scripts.
+Think of it like this:
 
-Create this final package structure only:
+```text
+ETL = creates the full truthful graph
+Projection = creates a simplified UI view from the full graph
+```
 
-consumption_inventory_graph/
-  README.md
-  run_all.sh
+So your exact ETL remains:
 
-  extractor/
-    extract_source_data_model.py
+```text
+4_graph_transformer_etl/
+  nodes.parquet
+  edges.parquet
+```
 
-  evidences/
-    source_sheets.csv
-    source_columns.csv
-    source_joins.csv
-    source_lookups.csv
-    method3_output_columns.csv
-    method3_audit_fields.csv
+The UI projection only reads those files and writes:
 
-  truth_table/
-    source_data_model_truth_table.csv
-    graph_contract_truth_table.csv
+```text
+6_commdataiq_integration/all_accounts/
+  ui_nodes.parquet
+  ui_edges.parquet
+  projection_report.json
+```
 
-  schema/
-    visjs_schema.json
-    json_schema.json
+It does **not** rewrite your backend nodes/edges.
 
-  data_source_mapping/
-    data_source_mapping.csv
+---
 
-  validate/
-    validate_schema.py
-    validation_cases.csv
-    validation_result.json
+## Final working tree
 
-Purpose:
+```text
+graph_consumption_inventory/
+│
+├── 4_graph_transformer_etl/
+│   ├── nodes.parquet              # full graph from ETL, unchanged
+│   └── edges.parquet              # full graph from ETL, unchanged
+│
+└── 6_commdataiq_integration/
+    ├── ui_projection_config.yaml
+    ├── build_ui_projection.py
+    ├── run_ui_projection.sh
+    │
+    ├── all_accounts/
+    │   ├── ui_nodes.parquet        # generated UI nodes
+    │   ├── ui_edges.parquet        # generated UI edges
+    │   └── projection_report.json  # generated report
+    │
+    └── ui_projection_report.json   # generated overall report
+```
 
-1. extractor/extract_source_data_model.py
+---
 
-This script must reconstruct the source data model behind Method3.
+## `ui_projection_config.yaml`
 
-It should inspect the Method3 code and available source/mapping artefacts to extract:
-- source file names
-- sheet names
-- column names
-- output columns
-- join keys
-- lookup paths
-- enrichment sources
-- audit/provenance fields
+Use only this:
 
-It must write:
+```yaml
+views:
 
-evidences/source_sheets.csv
-evidences/source_columns.csv
-evidences/source_joins.csv
-evidences/source_lookups.csv
-evidences/method3_output_columns.csv
-evidences/method3_audit_fields.csv
+  all_accounts:
+    output_folder: all_accounts
 
-Do not invent joins.
-Do not invent columns.
-If something is not explicitly available, mark it UNKNOWN.
+    visible_node_types:
+      - HumanAccount
+      - ServiceAccount
+      - BatchAccount
+      - Subdomain
+      - Domain
+      - BusinessUnit
+      - Application
+      - Table
+      - Database
 
-2. truth_table/source_data_model_truth_table.csv
+    direct_edges:
+      - BELONGS_TO_SUBDOMAIN
+      - PART_OF_DOMAIN
+      - PART_OF_BU
+      - ACCESSED
+      - IN_DATABASE
 
-This should summarise the reconstructed source data model.
+    derived_edges:
+      - label: DERIVED_SERVICE_TO_SUBDOMAIN
+        display_label: BELONGS_TO_SUBDOMAIN
+        from_type: ServiceAccount
+        to_type: Subdomain
+        path:
+          - ACCOUNTABLE_TO
+          - BELONGS_TO_SUBDOMAIN
 
-Columns:
+      - label: DERIVED_SERVICE_TO_APP
+        display_label: RESOLVES_TO_APP
+        from_type: ServiceAccount
+        to_type: Application
+        path:
+          - ATTRIBUTED_TO_CI
+          - RESOLVES_TO_APP
 
-source_file,
-sheet,
-sheet_role,
-concept,
-primary_key,
-foreign_key,
-join_target_sheet,
-join_target_key,
-columns_used,
-notes
+      - label: DERIVED_BATCH_TO_SUBDOMAIN
+        display_label: BELONGS_TO_SUBDOMAIN
+        from_type: BatchAccount
+        to_type: Subdomain
+        path:
+          - ACCOUNTABLE_TO
+          - BELONGS_TO_SUBDOMAIN
 
-sheet_role values may include:
-- concept
-- lookup
-- enrichment
-- relationship
-- output
-- audit
-- unknown
+      - label: DERIVED_BATCH_TO_APP
+        display_label: RESOLVES_TO_APP
+        from_type: BatchAccount
+        to_type: Application
+        path:
+          - ATTRIBUTED_TO_CI
+          - RESOLVES_TO_APP
+```
 
-3. truth_table/graph_contract_truth_table.csv
+This produces one combined UI graph:
 
-This should connect the reconstructed source data model to the graph contract.
+```text
+HumanAccount  → Subdomain → Domain → BusinessUnit
+ServiceAccount → Subdomain → Domain → BusinessUnit
+BatchAccount   → Subdomain → Domain → BusinessUnit
 
-Columns:
+ServiceAccount → Application
+BatchAccount   → Application
 
-graph_component_type,
-graph_component_name,
-graph_property,
-graph_source_node,
-graph_target_node,
-supporting_concept,
-supporting_sheet,
-supporting_column,
-join_path,
-materialisation_condition,
-notes
+Account → Table → Database
+```
 
-graph_component_type values:
-- node
-- edge
-- node_property
-- edge_property
+---
 
-4. schema/visjs_schema.json
+## Important reassurance
 
-Generate a presentation-ready graph schema JSON from the graph contract truth table and accepted schema files.
+Your ETL stays exact because:
 
-It must contain:
-- nodes
-- edges
-- properties per node
-- properties per edge
-- source node and target node for each edge
-- condition/materialisation text where available
+```text
+nodes.parquet and edges.parquet are the source of truth.
+```
 
-Format:
+The projection script only does this:
 
-{
-  "nodes": [
-    {
-      "id": "Account",
-      "label": "Account",
-      "properties": [...]
-    }
-  ],
-  "edges": [
-    {
-      "id": "Account__ACCESSED__Table",
-      "from": "Account",
-      "to": "Table",
-      "label": "ACCESSED",
-      "properties": [...],
-      "condition": "..."
-    }
-  ]
-}
+```text
+read full nodes
+read full edges
+filter visible node types
+keep selected direct edges
+create derived UI edges
+write new UI parquet files
+```
 
-5. schema/json_schema.json
+It does **not** delete, mutate, or overwrite full graph data.
 
-Copy the accepted generated JSON schema if available.
+The only collapsed relationships are **display edges** for UI:
 
-6. data_source_mapping/data_source_mapping.csv
+```text
+ServiceAccount → Subdomain
+derived from:
+ServiceAccount → DirectoryPerson → Subdomain
+```
 
-This must map every schema node, edge, node property, and edge property back to source evidence.
+and:
 
-Columns:
+```text
+ServiceAccount → Application
+derived from:
+ServiceAccount → CI → Application
+```
 
-component_type,
-component_name,
-property_name,
-source_file,
-sheet,
-column,
-join_path,
-mapping_status,
-notes
+So the backend truth is still preserved.
 
-Rules:
-- Every node in visjs_schema.json must have mapping rows.
-- Every edge in visjs_schema.json must have mapping rows.
-- Every node property must have mapping rows.
-- Every edge property must have mapping rows.
-- Use exact source file/sheet/column where available.
-- Use UNKNOWN where exact source sheet/column is not available.
-- Do not invent source columns.
+---
 
-7. validate/validate_schema.py
+## What to say to them
 
-Validation must check:
-- visjs_schema.json is valid JSON
-- every node has id and label
-- every edge has id, from, to, label
-- every edge source node exists
-- every edge target node exists
-- every node has data source mapping
-- every edge has data source mapping
-- every node property has data source mapping
-- every edge property has data source mapping
-- source_data_model_truth_table.csv is readable
-- graph_contract_truth_table.csv is readable
-- join paths referenced in graph_contract_truth_table.csv exist in source_joins.csv or are marked UNKNOWN
-- required graph paths exist
-- conditional logic is represented
-- Unknown mappings are warnings, not failures
+```text
+I will keep the ETL output unchanged as the full source-of-truth graph.
 
-Write:
-validate/validation_cases.csv
-validate/validation_result.json
+For the UI, I will create one all-accounts projection. It reads the full nodes and edges, filters the visible node types, and creates derived display edges only where we intentionally hide intermediate technical nodes such as DirectoryPerson and CI.
 
-8. run_all.sh
+This means the UI is simplified, but the ETL remains exact and traceable.
+```
 
-Run:
-python3 extractor/extract_source_data_model.py
-python3 validate/validate_schema.py
+The key sentence:
 
-README.md should explain this story:
-
-Extractor:
-Reconstructs the source data model behind Method3 by extracting source sheets, columns, joins, lookup paths, outputs, and audit fields.
-
-Evidences:
-Stores deterministic evidence tables from Method3 and source structures.
-
-Truth table:
-Turns source evidence into a structured source data model and graph contract.
-
-Schema:
-Presents the final graph contract as VisJS-style JSON with nodes, edges, and properties.
-
-Data source mapping:
-Maps every schema component back to exact source file, sheet, column, and join path where available.
-
-Validate:
-Runs deterministic structural, mapping coverage, join-path, conditional logic, and required-path checks.
-
-Important wording:
-- The source data model reconstruction is deterministic.
-- The graph schema is proposed from the reconstructed source data model and accepted schema logic.
-- The final graph schema is curated/evidence-informed, not blindly auto-generated.
-- UNKNOWN means evidence was not explicit in current source artefacts.
-- Do not mention Claude.
-- Do not mention LinkML in external-facing README text.
-
-After implementation, run:
-
-cd consumption_inventory_graph
-./run_all.sh
-
-Return:
-1. final tree
-2. number of source sheets
-3. number of source columns
-4. number of source joins
-5. number of source lookups
-6. number of graph nodes
-7. number of graph edges
-8. number of data source mapping rows
-9. UNKNOWN mapping count
-10. validation PASS/FAIL
-11. confirmation original model_linkml files were not modified
+```text
+Projection is not changing the graph; it is only a display layer on top of the full materialised graph.
+```
